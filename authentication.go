@@ -43,11 +43,11 @@ func (method *emailPasswordMethod) authenticate() ([]byte, error) {
 		return nil, fmt.Errorf("[Error] user not found")
 	}
 
-	encryptedPassword, err := encryptPassword(method.password, Pepper, user.salt)
+	encryptedPassword, err := encryptPassword(method.password, Pepper, user.Salt)
 	if err != nil {
 		return nil, fmt.Errorf("[Error] not able to encrypt password")
 	}
-	if !isTheCorrectPassword(encryptedPassword, user.encryptedPassword) {
+	if !isTheCorrectPassword(encryptedPassword, user.EncryptedPassword) {
 		return nil, fmt.Errorf("[Error] wrong password")
 	}
 
