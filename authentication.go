@@ -11,13 +11,15 @@ import (
 	"net/mail"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 var Pepper = os.Getenv("PEPPER")
 
 type authMethod interface {
-	checkCredentials() error
-	authenticate() error
+	validateCredentials() error
+	login() ([]byte, error)
 }
 
 type emailPasswordMethod struct {
@@ -25,7 +27,7 @@ type emailPasswordMethod struct {
 	password string
 }
 
-func (method *emailPasswordMethod) checkCredentials() error {
+func (method *emailPasswordMethod) validateCredentials() error {
 	var err error
 	err = isValidEmail(method.email)
 	if err != nil {
@@ -36,7 +38,7 @@ func (method *emailPasswordMethod) checkCredentials() error {
 	return err
 }
 
-func (method *emailPasswordMethod) authenticate() ([]byte, error) {
+func (method *emailPasswordMethod) login() ([]byte, error) {
 	var db Database
 	user, err := db.GetUserByEmail(method.email)
 	if err != nil {
@@ -60,13 +62,17 @@ func (method *emailPasswordMethod) authenticate() ([]byte, error) {
 
 }
 
-func authenticate(method authMethod) error {
+func login(method authMethod) error {
 	var err error
-	if err = method.checkCredentials(); err != nil {
+	if err = godotenv.Load(".env"); err != nil {
+		return err
+	}
+	if err = method.validateCredentials(); err != nil {
 		return err
 	}
 
-	if err = method.authenticate(); err != nil {
+	_, err = method.login()
+	if err != nil {
 		return err
 	}
 
@@ -107,8 +113,7 @@ func issueJWT(payload any) ([]byte, error) {
 		Typ: "JWT",
 	}
 
-	secret := "a-string-secret-at-least-256-bits-long"
-
+	secret := os.Getenv("JWT_SECRET")
 	jsonHeader, err := json.Marshal(header)
 	if err != nil {
 		return nil, err
@@ -142,4 +147,9 @@ func base64UrlEncode(src []byte) []byte {
 	base64UrlEncoded = bytes.ReplaceAll(base64UrlEncoded, []byte("="), []byte(""))
 
 	return base64UrlEncoded
+}
+
+func createUser(email, password string) error {
+
+	return nil
 }
