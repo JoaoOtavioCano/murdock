@@ -45,10 +45,30 @@ func TestIssueJWT(t *testing.T) {
 	}
 	jwt, err := issueJWT(user)
 	if err != nil {
-		t.Errorf("[Error] somethin went wrong issuing jwt")
+		t.Errorf("[Error] something went wrong issuing jwt")
 	}
 
 	if !bytes.Equal(jwt, []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0.UbuPbH2mNjQUCFYY_l-ZlPkUT3L8VIWlspkTis4mFnc")) {
 		t.Errorf("[Error] invalid jwt")
+	}
+}
+
+func Test10kWorstPasswordsComparison(t *testing.T) {
+	found, err := isInThe10kWorstPasswords("monkey")
+	if err != nil {
+		t.Errorf("[Error] something went wrong")
+	}
+	
+	if !found {
+		t.Errorf("[Error] unable to find bad password in the file")
+	}
+	
+	found, err = isInThe10kWorstPasswords("EssaEamelhorsenhadomund1234@#$%ˆ&")
+	if err != nil {
+		t.Errorf("[Error] something went wrong")
+	}
+	
+	if found {
+		t.Errorf("[Error] unable to find bad password in the file")
 	}
 }

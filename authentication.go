@@ -85,6 +85,16 @@ func isValidEmail(email string) error {
 }
 
 func isValidPassword(password string) error {
+	
+	found, err := isInThe10kWorstPasswords(password) 
+	if err != nil {
+		return err
+	}
+	
+	if found{
+	} 
+	
+	
 	return nil
 }
 
@@ -97,7 +107,7 @@ func isTheCorrectPassword(password01, password02 string) bool {
 }
 
 func encryptPassword(password, salt, pepper string) (string, error) {
-	encryptedPassword, err := pbkdf2.Key(sha256.New, password+pepper, []byte(salt), 4096, 32)
+	encryptedPassword, err := pbkdf2.Key(sha256.New, password+pepper, []byte(salt), 10000, 32)
 	if err != nil {
 		return "", err
 	}
@@ -149,7 +159,21 @@ func base64UrlEncode(src []byte) []byte {
 	return base64UrlEncoded
 }
 
-func createUser(email, password string) error {
-
+func (method *emailPasswordMethod)createUser(email, password string) error {
+	
+	if err := method.validateCredentials(); err != nil {
+			return err
+	}
+	
 	return nil
+}
+
+
+func isInThe10kWorstPasswords(password string) (bool, error){
+	data, err := os.ReadFile("10k-worst-passwords.txt")
+	if err != nil {
+		fmt.Errorf("[Error] unable to read file")
+	}
+	
+	return bytes.Contains(data, []byte(password)), nil
 }
