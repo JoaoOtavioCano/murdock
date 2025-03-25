@@ -1,4 +1,4 @@
-package murdock
+package main
 
 import (
 	"bytes"
@@ -16,6 +16,13 @@ import (
 )
 
 var Pepper = os.Getenv("PEPPER")
+
+const (
+	ErrorUserNotFound = "[Error] user not found"
+	ErrorWrongPassword = "[Error] wrong password"
+	ErrorNotAbleToEncryptPassword = "[Error] not able to encrypt password"
+	ErrorNotAbleToIssueJWT = "[Error] not able to issue JWT"
+)
 
 type authMethod interface {
 	validateCredentials() error
@@ -42,20 +49,20 @@ func (method *emailPasswordMethod) login() ([]byte, error) {
 	var db Database
 	user, err := db.GetUserByEmail(method.email)
 	if err != nil {
-		return nil, fmt.Errorf("[Error] user not found")
+		return nil, fmt.Errorf(ErrorUserNotFound)
 	}
 
 	encryptedPassword, err := encryptPassword(method.password, Pepper, user.Salt)
 	if err != nil {
-		return nil, fmt.Errorf("[Error] not able to encrypt password")
+		return nil, fmt.Errorf(ErrorNotAbleToEncryptPassword)
 	}
 	if !isTheCorrectPassword(encryptedPassword, user.EncryptedPassword) {
-		return nil, fmt.Errorf("[Error] wrong password")
+		return nil, fmt.Errorf(ErrorWrongPassword)
 	}
 
 	jwt, err := issueJWT(user)
 	if err != nil {
-		return nil, fmt.Errorf("[Error] not able to issue JWT")
+		return nil, fmt.Errorf(ErrorNotAbleToIssueJWT)
 	}
 
 	return jwt, nil
@@ -159,20 +166,10 @@ func base64UrlEncode(src []byte) []byte {
 	return base64UrlEncoded
 }
 
-func (method *emailPasswordMethod)createUser(email, password string) error {
-	
-	if err := method.validateCredentials(); err != nil {
-			return err
-	}
-	
-	return nil
-}
-
-
 func isInThe10kWorstPasswords(password string) (bool, error){
 	data, err := os.ReadFile("10k-worst-passwords.txt")
 	if err != nil {
-		fmt.Errorf("[Error] unable to read file")
+		return false, fmt.Errorf("[Error] unable to read file")
 	}
 	
 	return bytes.Contains(data, []byte(password)), nil

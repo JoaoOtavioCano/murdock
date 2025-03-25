@@ -1,21 +1,26 @@
-package murdock
+package main
+
+import (
+	"bytes"
+	"fmt"
+)
 
 type Database struct {
 	user string
 }
 
-type User struct {
-	Id                string `json:"id"`
-	Email             string `json:"email"`
-	EncryptedPassword string `json:"encryptedPassword"`
-	Salt              string `json:"salt"`
-}
-
 func (db *Database) GetUserByEmail(emailAddr string) (User, error) {
+	if !bytes.Equal([]byte(emailAddr), []byte("example@email.com")) {
+		return User{}, fmt.Errorf("[Error] invalid email address")
+	}
+	e, err := encryptPassword("", "", Pepper)
+	if err != nil {
+		return User{}, err
+	}
 	return User{
 		Id:                "123456789",
-		Email:             "teste@email.com",
-		EncryptedPassword: "",
+		Email:             "example@email.com",
+		EncryptedPassword: e,
 		Salt:              "",
 	}, nil
 }

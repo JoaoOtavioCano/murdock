@@ -1,4 +1,4 @@
-package murdock
+package main 
 
 import (
 	"bytes"
