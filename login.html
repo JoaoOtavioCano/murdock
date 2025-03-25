@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}' /> <!--all responses are swapped-->
     <title>sigin</title>
+    <link rel="icon" type="image/x-icon" href="../resources/favicon.svg">
     <style>
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -25,12 +26,12 @@
             <div class="flex flex-col p-4" id="emailDiv" hx-swap-oob="true">
                 <label for="email" class="ml-1 rounded-t px-1 w-fit bg-black text-white">email</label>
                 <input type="text" id="email" name="email" placeholder="example@email.com"
-                    class="border-2 border-black rounded text-zinc-600 bg-white p-1 ">
+                    class="border-2 border-black rounded text-black bg-white p-1 ">
             </div>
             <div class="flex flex-col p-4" id="passwordDiv" hx-swap-oob="true">
                 <label for="password" class="ml-1 rounded-t px-1 w-fit bg-black text-white">password</label>
                 <input type="password" id="password" name="password" placeholder="p@ssWord1234"
-                    class="border-2 border-black rounded bg-white text-zinc-600 p-1">
+                    class="border-2 border-black rounded bg-white text-black p-1">
             </div>
             <button  type="submit" id="button" class="relative inline-flex items-center justify-center p-1 m-4 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-tl from-[#F20C36] from-10%  to-[#6B0F1F] to-80% hover:text-white ">
                 <span class="inline-flex justify-center p-1 relative w-full h-full transition-all ease-in duration-200 bg-white rounded group-hover:bg-transparent group-hover:dark:bg-transparent">
