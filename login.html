@@ -25,12 +25,12 @@
             <h1 class="m-auto font-bold text-2xl">sign in</h1>
             <div class="flex flex-col p-4" id="emailDiv" hx-swap-oob="true">
                 <label for="email" class="ml-1 rounded-t px-1 w-fit bg-black text-white">email</label>
-                <input type="text" id="email" name="email" placeholder="example@email.com"
+                <input type="email" id="email" name="email" placeholder="example@email.com"
                     class="border-2 border-black rounded text-black bg-white p-1 ">
             </div>
             <div class="flex flex-col p-4" id="passwordDiv" hx-swap-oob="true">
                 <label for="password" class="ml-1 rounded-t px-1 w-fit bg-black text-white">password</label>
-                <input type="password" id="password" name="password" placeholder="p@ssWord1234"
+                <input type="password" id="password" name="password" placeholder="p@ssWord1234" minlength="8" maxlength="128"
                     class="border-2 border-black rounded bg-white text-black p-1">
             </div>
             <button  type="submit" id="button" class="relative inline-flex items-center justify-center p-1 m-4 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-tl from-[#F20C36] from-10%  to-[#6B0F1F] to-80% hover:text-white ">
