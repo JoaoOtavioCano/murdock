@@ -86,6 +86,29 @@ func login(method authMethod) error {
 	return nil
 }
 
+func authenticate(jwt []byte) (bool, error) {
+	var err error
+	if err = godotenv.Load(".env"); err != nil {
+		return false, nil
+	}
+	
+	jwtSections := bytes.Split(jwt, []byte("."))
+	
+	header := jwtSections[0]
+	payload := jwtSections[1]
+	signature, err := base64UrlpDecode(jwtSections[2])
+	if err != nil {
+			return false, nil
+	}
+	
+	jwtContent := []byte(string(header) + "." + string(payload))
+	expectedSignature := signJWT(jwtContent)
+	
+	signature = signature[:len(signature)-1]
+	
+	return hmac.Equal(signature, expectedSignature), nil
+}
+
 func isValidEmail(email string) error {
 	_, err := mail.ParseAddress(email)
 	return err
@@ -130,7 +153,6 @@ func issueJWT(payload any) ([]byte, error) {
 		Typ: "JWT",
 	}
 
-	secret := os.Getenv("JWT_SECRET")
 	jsonHeader, err := json.Marshal(header)
 	if err != nil {
 		return nil, err
@@ -143,10 +165,8 @@ func issueJWT(payload any) ([]byte, error) {
 	payloadBase64UrlEncoded := base64UrlEncode(jsonPayload)
 
 	result := []byte(string(headerBase64UrlEncoded) + "." + string(payloadBase64UrlEncoded))
-	r := hmac.New(sha256.New, []byte(secret))
-	r.Write(result)
 
-	signature := r.Sum([]byte(""))
+	signature := signJWT(result)
 	signatureBase64UrlEncoded := base64UrlEncode(signature)
 
 	result = []byte(string(result) + "." + string(signatureBase64UrlEncoded))
@@ -166,6 +186,26 @@ func base64UrlEncode(src []byte) []byte {
 	return base64UrlEncoded
 }
 
+func base64UrlpDecode(encodedData []byte) ([]byte, error) {
+	encodedData = bytes.ReplaceAll(encodedData, []byte("-"), []byte("+"))
+	encodedData = bytes.ReplaceAll(encodedData, []byte("_"), []byte("/"))
+	if (len(encodedData) % 4) != 0 {
+		for range(4- len(encodedData)%4){
+			encodedData = append(encodedData, []byte("=")...)
+		}
+	}
+	
+	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(encodedData)))
+	
+	_, err := base64.StdEncoding.Decode(decodedData, encodedData)
+	if err != nil {
+		return nil, fmt.Errorf("[Error] unable to decode base 64 url")
+	}
+	
+	return decodedData, nil
+	
+}
+
 func isInThe10kWorstPasswords(password string) (bool, error){
 	data, err := os.ReadFile("10k-worst-passwords.txt")
 	if err != nil {
@@ -173,4 +213,15 @@ func isInThe10kWorstPasswords(password string) (bool, error){
 	}
 	
 	return bytes.Contains(data, []byte(password)), nil
+}
+
+func signJWT(jwtContent []byte) []byte {
+	secret := os.Getenv("JWT_SECRET")
+	
+	r := hmac.New(sha256.New, []byte(secret))
+	r.Write(jwtContent)
+
+	signature := r.Sum(nil)
+	
+	return signature
 }
