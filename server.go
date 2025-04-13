@@ -8,7 +8,7 @@ import (
 
 func main() {
 	s := &http.Server{
-		Addr: ":6969",
+		Addr:                         ":80",
 		DisableGeneralOptionsHandler: false,
 	}
 
