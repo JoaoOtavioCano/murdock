@@ -18,10 +18,13 @@ import (
 var Pepper = os.Getenv("PEPPER")
 
 const (
-	ErrorUserNotFound = "[Error] user not found"
-	ErrorWrongPassword = "[Error] wrong password"
-	ErrorNotAbleToEncryptPassword = "[Error] not able to encrypt password"
-	ErrorNotAbleToIssueJWT = "[Error] not able to issue JWT"
+	ErrorUserNotFound               = "[Error] user not found"
+	ErrorWrongPassword              = "[Error] wrong password"
+	ErrorNotAbleToEncryptPassword   = "[Error] not able to encrypt password"
+	ErrorNotAbleToIssueJWT          = "[Error] not able to issue JWT"
+	ErrorEmptyPassword              = "[Error] empty password"
+	ErrorFoundInWorstPassowordsList = "[Error] found in worst passwords list"
+	ErrorEmptyEmail                 = "[Error] empty email"
 )
 
 type authMethod interface {
@@ -69,21 +72,21 @@ func (method *emailPasswordMethod) login() ([]byte, error) {
 
 }
 
-func login(method authMethod) error {
+func login(method authMethod) ([]byte, error) {
 	var err error
 	if err = godotenv.Load(".env"); err != nil {
-		return err
+		return nil, err
 	}
 	if err = method.validateCredentials(); err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = method.login()
+	jwt, err := method.login()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return jwt, nil
 }
 
 func authenticate(jwt []byte) (bool, error) {
@@ -91,40 +94,46 @@ func authenticate(jwt []byte) (bool, error) {
 	if err = godotenv.Load(".env"); err != nil {
 		return false, nil
 	}
-	
+
 	jwtSections := bytes.Split(jwt, []byte("."))
-	
+
 	header := jwtSections[0]
 	payload := jwtSections[1]
 	signature, err := base64UrlpDecode(jwtSections[2])
 	if err != nil {
-			return false, nil
+		return false, nil
 	}
-	
+
 	jwtContent := []byte(string(header) + "." + string(payload))
 	expectedSignature := signJWT(jwtContent)
-	
+
 	signature = signature[:len(signature)-1]
-	
+
 	return hmac.Equal(signature, expectedSignature), nil
 }
 
 func isValidEmail(email string) error {
+	if email == "" {
+		return fmt.Errorf(ErrorEmptyEmail)
+	}
 	_, err := mail.ParseAddress(email)
 	return err
 }
 
 func isValidPassword(password string) error {
-	
-	found, err := isInThe10kWorstPasswords(password) 
+	if password == "" {
+		return fmt.Errorf(ErrorEmptyPassword)
+	}
+
+	found, err := isInThe10kWorstPasswords(password)
 	if err != nil {
 		return err
 	}
-	
-	if found{
-	} 
-	
-	
+
+	if found {
+		return fmt.Errorf(ErrorFoundInWorstPassowordsList)
+	}
+
 	return nil
 }
 
@@ -190,38 +199,38 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 	encodedData = bytes.ReplaceAll(encodedData, []byte("-"), []byte("+"))
 	encodedData = bytes.ReplaceAll(encodedData, []byte("_"), []byte("/"))
 	if (len(encodedData) % 4) != 0 {
-		for range(4- len(encodedData)%4){
+		for range 4 - len(encodedData)%4 {
 			encodedData = append(encodedData, []byte("=")...)
 		}
 	}
-	
+
 	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(encodedData)))
-	
+
 	_, err := base64.StdEncoding.Decode(decodedData, encodedData)
 	if err != nil {
 		return nil, fmt.Errorf("[Error] unable to decode base 64 url")
 	}
-	
+
 	return decodedData, nil
-	
+
 }
 
-func isInThe10kWorstPasswords(password string) (bool, error){
+func isInThe10kWorstPasswords(password string) (bool, error) {
 	data, err := os.ReadFile("10k-worst-passwords.txt")
 	if err != nil {
 		return false, fmt.Errorf("[Error] unable to read file")
 	}
-	
+
 	return bytes.Contains(data, []byte(password)), nil
 }
 
 func signJWT(jwtContent []byte) []byte {
 	secret := os.Getenv("JWT_SECRET")
-	
+
 	r := hmac.New(sha256.New, []byte(secret))
 	r.Write(jwtContent)
 
 	signature := r.Sum(nil)
-	
+
 	return signature
 }

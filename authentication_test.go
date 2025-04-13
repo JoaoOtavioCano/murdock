@@ -58,16 +58,16 @@ func Test10kWorstPasswordsComparison(t *testing.T) {
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}
-	
+
 	if !found {
 		t.Errorf("[Error] unable to find bad password in the file")
 	}
-	
+
 	found, err = isInThe10kWorstPasswords("EssaEamelhorsenhadomund1234@#$%ˆ&")
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}
-	
+
 	if found {
 		t.Errorf("[Error] unable to find bad password in the file")
 	}
@@ -75,7 +75,7 @@ func Test10kWorstPasswordsComparison(t *testing.T) {
 
 func TestBase64UrlpDecode(t *testing.T) {
 	encodedData := []byte("eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0")
-	
+
 	decodedData, err := base64UrlpDecode(encodedData)
 	if err != nil {
 		t.Errorf("[Error] unable to decode data")
@@ -85,18 +85,18 @@ func TestBase64UrlpDecode(t *testing.T) {
 	if !bytes.Equal(decodedData, []byte(`{"id":"1234567890","email":"test@email.com","encryptedPassword":"","salt":""}`)) {
 		t.Errorf("[Error] data decoded incorrectly")
 	}
-	
+
 }
 
-func TestAuthenticate(t *testing.T){
+func TestAuthenticate(t *testing.T) {
 	jwt := []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0.UbuPbH2mNjQUCFYY_l-ZlPkUT3L8VIWlspkTis4mFnc")
-	
+
 	authenticated, err := authenticate(jwt)
-	
+
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}
-	
+
 	if !authenticated {
 		t.Errorf("[Error] data not authenticated")
 	}
