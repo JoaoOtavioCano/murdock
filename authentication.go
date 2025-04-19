@@ -32,30 +32,30 @@ type authMethod interface {
 	login() ([]byte, error)
 }
 
-type emailPasswordMethod struct {
-	email    string
-	password string
+type EmailPasswordMethod struct {
+	Email    string `json:"email"` 
+	Password string `json:"password"`
 }
 
-func (method *emailPasswordMethod) validateCredentials() error {
+func (method *EmailPasswordMethod) validateCredentials() error {
 	var err error
-	err = isValidEmail(method.email)
+	err = isValidEmail(method.Email)
 	if err != nil {
 		return err
 	}
-	err = isValidPassword(method.password)
+	err = isValidPassword(method.Password)
 
 	return err
 }
 
-func (method *emailPasswordMethod) login() ([]byte, error) {
+func (method *EmailPasswordMethod) login() ([]byte, error) {
 	var db Database
-	user, err := db.GetUserByEmail(method.email)
+	user, err := db.GetUserByEmail(method.Email)
 	if err != nil {
 		return nil, fmt.Errorf(ErrorUserNotFound)
 	}
 
-	encryptedPassword, err := encryptPassword(method.password, Pepper, user.Salt)
+	encryptedPassword, err := encryptPassword(method.Password, Pepper, user.Salt)
 	if err != nil {
 		return nil, fmt.Errorf(ErrorNotAbleToEncryptPassword)
 	}

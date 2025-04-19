@@ -38,9 +38,9 @@ func TestIssueJWT(t *testing.T) {
 		t.Errorf("[Error] get .env")
 	}
 	user := User{
-		Id:                "1234567890",
-		Email:             "test@email.com",
-		EncryptedPassword: "",
+		Id:                "123456789",
+		Email:             "example@email.com",
+		EncryptedPassword: "A�i#3��)�Pp��Hi>*bM�B��E���",
 		Salt:              "",
 	}
 	jwt, err := issueJWT(user)
@@ -48,7 +48,7 @@ func TestIssueJWT(t *testing.T) {
 		t.Errorf("[Error] something went wrong issuing jwt")
 	}
 
-	if !bytes.Equal(jwt, []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0.UbuPbH2mNjQUCFYY_l-ZlPkUT3L8VIWlspkTis4mFnc")) {
+	if !bytes.Equal(jwt, []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OSIsImVtYWlsIjoiZXhhbXBsZUBlbWFpbC5jb20ifQ.Nfnw24aDs6FcO4YJ2-Mje8bj1RLjmsG1DCbxI-0DZkI")) {
 		t.Errorf("[Error] invalid jwt")
 	}
 }

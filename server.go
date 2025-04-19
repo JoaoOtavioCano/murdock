@@ -16,16 +16,30 @@ func main() {
 
 	http.DefaultServeMux.HandleFunc("POST /api/signin", signinHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/auth", authHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/signup", signupHandler)
 
 	log.Fatal(s.ListenAndServe())
 }
 
 func signinHandler(w http.ResponseWriter, r *http.Request) {
-	authMethod := &emailPasswordMethod{
-		email:    r.FormValue("email"),
-		password: r.FormValue("password"),
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
+	
+	authMethod := &EmailPasswordMethod{
+		Email:    "",
+		Password: "",
 	}
 
+	if err = json.Unmarshal(body, authMethod); err != nil {
+		log.Println("[Error JSON unmarshal]" + err.Error())
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+	
 	jwt, err := login(authMethod)
 	if err != nil {
 		switch err.Error() {
@@ -92,4 +106,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func signupHandler(w http.ResponseWriter, r *http.Request) {
+	
 }
