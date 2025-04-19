@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
+	"io"
 )
 
 func main() {
@@ -13,12 +15,12 @@ func main() {
 	}
 
 	http.DefaultServeMux.HandleFunc("POST /api/signin", signinHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/auth", authHandler)
 
 	log.Fatal(s.ListenAndServe())
 }
 
 func signinHandler(w http.ResponseWriter, r *http.Request) {
-
 	authMethod := &emailPasswordMethod{
 		email:    r.FormValue("email"),
 		password: r.FormValue("password"),
@@ -51,4 +53,43 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Authorization", string(jwt))
 	w.WriteHeader(http.StatusOK)
+}
+
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
+	authRequestData := &struct{
+		Token string `json:"token"`
+	}{
+		Token: "",
+	}
+	
+	if err = json.Unmarshal(body, authRequestData); err != nil {
+		log.Println(err)
+		http.Error(w, "something went wrong", http.StatusInternalServerError) 
+		return
+	}
+	
+	if authRequestData.Token == "" {
+		log.Println("token not found")
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	} 
+	authenticated, err := authenticate([]byte(authRequestData.Token))
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
+	
+	if !authenticated {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	
+	w.WriteHeader(http.StatusNoContent)
 }

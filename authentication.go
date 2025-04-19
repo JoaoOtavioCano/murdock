@@ -92,7 +92,7 @@ func login(method authMethod) ([]byte, error) {
 func authenticate(jwt []byte) (bool, error) {
 	var err error
 	if err = godotenv.Load(".env"); err != nil {
-		return false, nil
+		return false, err 
 	}
 
 	jwtSections := bytes.Split(jwt, []byte("."))
@@ -101,7 +101,7 @@ func authenticate(jwt []byte) (bool, error) {
 	payload := jwtSections[1]
 	signature, err := base64UrlpDecode(jwtSections[2])
 	if err != nil {
-		return false, nil
+		return false, err 
 	}
 
 	jwtContent := []byte(string(header) + "." + string(payload))
