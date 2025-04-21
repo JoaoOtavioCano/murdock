@@ -1,34 +1,59 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
-	"io"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
-func main() {
-	s := &http.Server{
+type Service struct {
+	server   *http.Server
+	database *sql.DB
+}
+
+func (s *Service) start() {
+	var err error
+	if err = godotenv.Load(".env"); err != nil {
+		log.Fatal(err)
+	}
+
+	dbConnStr := fmt.Sprintf("user=%s dbname=%s sslmode=%s",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_SSL_MODE"))
+	s.database, err = sql.Open("postgres", dbConnStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s.server = &http.Server{
 		Addr:                         ":80",
 		DisableGeneralOptionsHandler: false,
 	}
 
-	http.DefaultServeMux.HandleFunc("POST /api/signin", signinHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/auth", authHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/signup", signupHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/auth", s.authHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
 
-	log.Fatal(s.ListenAndServe())
+	log.Fatal(s.server.ListenAndServe())
 }
 
-func signinHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
-	
+
 	authMethod := &EmailPasswordMethod{
 		Email:    "",
 		Password: "",
@@ -39,7 +64,7 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
-	
+
 	jwt, err := login(authMethod)
 	if err != nil {
 		switch err.Error() {
@@ -69,45 +94,45 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func authHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) authHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
-	authRequestData := &struct{
+	authRequestData := &struct {
 		Token string `json:"token"`
 	}{
 		Token: "",
 	}
-	
+
 	if err = json.Unmarshal(body, authRequestData); err != nil {
 		log.Println(err)
-		http.Error(w, "something went wrong", http.StatusInternalServerError) 
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
-	
+
 	if authRequestData.Token == "" {
 		log.Println("token not found")
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
-	} 
+	}
 	authenticated, err := authenticate([]byte(authRequestData.Token))
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
-	
+
 	if !authenticated {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func signupHandler(w http.ResponseWriter, r *http.Request) {
-	
+func (s *Service) signupHandler(w http.ResponseWriter, r *http.Request) {
+
 }

@@ -11,8 +11,6 @@ import (
 	"net/mail"
 	"os"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
 
 var Pepper = os.Getenv("PEPPER")
@@ -33,7 +31,7 @@ type authMethod interface {
 }
 
 type EmailPasswordMethod struct {
-	Email    string `json:"email"` 
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -74,9 +72,7 @@ func (method *EmailPasswordMethod) login() ([]byte, error) {
 
 func login(method authMethod) ([]byte, error) {
 	var err error
-	if err = godotenv.Load(".env"); err != nil {
-		return nil, err
-	}
+
 	if err = method.validateCredentials(); err != nil {
 		return nil, err
 	}
@@ -91,9 +87,6 @@ func login(method authMethod) ([]byte, error) {
 
 func authenticate(jwt []byte) (bool, error) {
 	var err error
-	if err = godotenv.Load(".env"); err != nil {
-		return false, err 
-	}
 
 	jwtSections := bytes.Split(jwt, []byte("."))
 
@@ -101,7 +94,7 @@ func authenticate(jwt []byte) (bool, error) {
 	payload := jwtSections[1]
 	signature, err := base64UrlpDecode(jwtSections[2])
 	if err != nil {
-		return false, err 
+		return false, err
 	}
 
 	jwtContent := []byte(string(header) + "." + string(payload))
@@ -233,4 +226,20 @@ func signJWT(jwtContent []byte) []byte {
 	signature := r.Sum(nil)
 
 	return signature
+}
+
+func (method *EmailPasswordMethod) createUser() error {
+	err := method.validateCredentials()
+	if err != nil {
+		return err
+	}
+
+	user := newUser()
+	user.Email = method.Email
+	user.EncryptedPassword, err = encryptPassword(method.Password, user.Salt, Pepper)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
