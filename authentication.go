@@ -135,6 +135,8 @@ func isTheCorrectPassword(password01, password02 string) bool {
 	return true
 }
 
+// PBKDF2 of at least 10,000 iterations
+// Link to NIST SP800-63B: https://pages.nist.gov/800-63-3/sp800-63b.html#For%20PBKDF2,%20the%20cost%20factor%20is%20an%20iteration%20count:%20the%20more%20times%20the%20PBKDF2%20function%20is%20iterated,%20the%20longer%20it%20takes%20to%20compute%20the%20password%20hash.%20Therefore,%20the%20iteration%20count%20SHOULD%20be%20as%20large%20as%20verification%20server%20performance%20will%20allow,%20typically%20at%20least%2010,000%20iterations.:~:text=For%20PBKDF2%2C%20the%20cost%20factor%20is%20an%20iteration%20count%3A%20the%20more%20times%20the%20PBKDF2%20function%20is%20iterated%2C%20the%20longer%20it%20takes%20to%20compute%20the%20password%20hash.%20Therefore%2C%20the%20iteration%20count%20SHOULD%20be%20as%20large%20as%20verification%20server%20performance%20will%20allow%2C%20typically%20at%20least%2010%2C000%20iterations.
 func encryptPassword(password, salt, pepper string) (string, error) {
 	encryptedPassword, err := pbkdf2.Key(sha256.New, password+pepper, []byte(salt), 10000, 32)
 	if err != nil {
@@ -143,6 +145,8 @@ func encryptPassword(password, salt, pepper string) (string, error) {
 	return string(encryptedPassword), nil
 }
 
+// Json Web Token (JWT) implementation
+// link: https://jwt.io/introduction
 func issueJWT(payload any) ([]byte, error) {
 	header := struct {
 		Alg string `json:"alg"`
@@ -232,6 +236,7 @@ func (method *EmailPasswordMethod) createUser() error {
 
 	user := newUser()
 	user.Email = method.Email
+	user.Salt = createSalt()
 	user.EncryptedPassword, err = encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
 		return err
