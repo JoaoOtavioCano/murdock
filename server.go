@@ -1,9 +1,7 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -14,9 +12,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var Pepper string
+var jwt_secret string
+var service Service
+
 type Service struct {
 	server   *http.Server
-	database *sql.DB
+	database *Database
 }
 
 func (s *Service) start() {
@@ -25,11 +27,10 @@ func (s *Service) start() {
 		log.Fatal(err)
 	}
 
-	dbConnStr := fmt.Sprintf("user=%s dbname=%s sslmode=%s",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSL_MODE"))
-	s.database, err = sql.Open("postgres", dbConnStr)
+	Pepper = os.Getenv("PEPPER")
+	jwt_secret = os.Getenv("JWT_SECRET")
+
+	s.database, err = NewDatabase() 
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jwt, err := login(authMethod)
+	jwt, err := s.login(authMethod)
 	if err != nil {
 		switch err.Error() {
 		case ErrorUserNotFound, ErrorWrongPassword:

@@ -37,10 +37,16 @@ func TestIssueJWT(t *testing.T) {
 	if err := godotenv.Load(".env"); err != nil {
 		t.Errorf("[Error] get .env")
 	}
+	Pepper = os.Getenv("PEPPER")
+	jwt_secret = os.Getenv("JWT_SECRET")
+	e, err := encryptPassword("senha1234", "", Pepper)
+	if err != nil {
+		t.Errorf("[Error] encrypting password")
+	}
 	user := User{
 		Id:                "123456789",
 		Email:             "example@email.com",
-		EncryptedPassword: "A�i#3��)�Pp��Hi>*bM�B��E���",
+		EncryptedPassword: e,
 		Salt:              "",
 	}
 	jwt, err := issueJWT(user)

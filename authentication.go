@@ -13,8 +13,6 @@ import (
 	"strings"
 )
 
-var Pepper = os.Getenv("PEPPER")
-
 const (
 	ErrorUserNotFound               = "[Error] user not found"
 	ErrorWrongPassword              = "[Error] wrong password"
@@ -27,7 +25,7 @@ const (
 
 type authMethod interface {
 	validateCredentials() error
-	login() ([]byte, error)
+	login(db *Database) ([]byte, error)
 }
 
 type EmailPasswordMethod struct {
@@ -46,14 +44,13 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 	return err
 }
 
-func (method *EmailPasswordMethod) login() ([]byte, error) {
-	var db Database
+func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
 	user, err := db.GetUserByEmail(method.Email)
 	if err != nil {
 		return nil, fmt.Errorf(ErrorUserNotFound)
 	}
 
-	encryptedPassword, err := encryptPassword(method.Password, Pepper, user.Salt)
+	encryptedPassword, err := encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
 		return nil, fmt.Errorf(ErrorNotAbleToEncryptPassword)
 	}
@@ -70,14 +67,14 @@ func (method *EmailPasswordMethod) login() ([]byte, error) {
 
 }
 
-func login(method authMethod) ([]byte, error) {
+func (s *Service) login(method authMethod) ([]byte, error) {
 	var err error
 
 	if err = method.validateCredentials(); err != nil {
 		return nil, err
 	}
 
-	jwt, err := method.login()
+	jwt, err := method.login(s.database)
 	if err != nil {
 		return nil, err
 	}
@@ -218,9 +215,8 @@ func isInThe10kWorstPasswords(password string) (bool, error) {
 }
 
 func signJWT(jwtContent []byte) []byte {
-	secret := os.Getenv("JWT_SECRET")
 
-	r := hmac.New(sha256.New, []byte(secret))
+	r := hmac.New(sha256.New, []byte(jwt_secret))
 	r.Write(jwtContent)
 
 	signature := r.Sum(nil)
