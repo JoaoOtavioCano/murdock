@@ -7,7 +7,7 @@ import (
 )
 
 type idGenerator interface {
-	generateId()
+	generateId() []byte
 }
 
 // Id generator that implements the UUIDv7 RFC 9562 specification
