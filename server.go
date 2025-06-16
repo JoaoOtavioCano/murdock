@@ -30,7 +30,7 @@ func (s *Service) start() {
 	Pepper = os.Getenv("PEPPER")
 	jwt_secret = os.Getenv("JWT_SECRET")
 
-	s.database, err = NewDatabase() 
+	s.database, err = NewDatabase()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -135,5 +135,29 @@ func (s *Service) authHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) signupHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
 
+	authMethod := &EmailPasswordMethod{
+		Email:    "",
+		Password: "",
+	}
+
+	if err = json.Unmarshal(body, authMethod); err != nil {
+		log.Println("[Error JSON unmarshal]" + err.Error())
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}	
+
+	if err = s.createUser(authMethod); err != nil {
+		log.Println(err)
+		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	} 
+	
+	w.WriteHeader(http.StatusCreated)
 }

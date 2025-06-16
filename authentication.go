@@ -6,6 +6,7 @@ import (
 	"crypto/pbkdf2"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/mail"
@@ -26,6 +27,7 @@ const (
 type authMethod interface {
 	validateCredentials() error
 	login(db *Database) ([]byte, error)
+	createUser(idGenerator idGenerator, db Database) error
 }
 
 type EmailPasswordMethod struct {
@@ -142,7 +144,7 @@ func encryptPassword(password, salt, pepper string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(encryptedPassword), nil
+	return hex.EncodeToString(encryptedPassword), nil
 }
 
 // Json Web Token (JWT) implementation
@@ -228,19 +230,45 @@ func signJWT(jwtContent []byte) []byte {
 	return signature
 }
 
-func (method *EmailPasswordMethod) createUser() error {
+func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Database) error {
 	err := method.validateCredentials()
 	if err != nil {
 		return err
 	}
 
 	user := newUser()
+	user.Id = hex.EncodeToString(idGenerator.generateId())
 	user.Email = method.Email
 	user.Salt = createSalt()
 	user.EncryptedPassword, err = encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
 		return err
 	}
+	
+	tx, err := db.db.Begin()
+	if err != nil {
+		return err
+	}
+	
+	if err = crateUserInDB(tx, *user); err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	if err = tx.Commit(); err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	return nil
+}
 
+func (s *Service) createUser(method authMethod) error {
+	
+	idGenerator := &UUIDv7Generator{}
+	
+	if err := method.createUser(idGenerator, *s.database); err != nil {
+		return err
+	}
 	return nil
 }
