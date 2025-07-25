@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	Pepper     string
-	jwt_secret string
-	service    Service
+	Pepper    string
+	jwtSecret string
+	service   Service
 )
 
 type Service struct {
@@ -30,7 +30,7 @@ func (s *Service) start() {
 	}
 
 	Pepper = os.Getenv("PEPPER")
-	jwt_secret = os.Getenv("JWT_SECRET")
+	jwtSecret = os.Getenv("JWT_SECRET")
 
 	s.database, err = NewDatabase()
 	if err != nil {

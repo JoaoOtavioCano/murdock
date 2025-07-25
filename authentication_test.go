@@ -33,12 +33,13 @@ func TestEncryptPassword(t *testing.T) {
 		t.Errorf("Error: não acertou a comparação")
 	}
 }
+
 func TestIssueJWT(t *testing.T) {
 	if err := godotenv.Load(".env"); err != nil {
 		t.Errorf("[Error] get .env")
 	}
 	Pepper = os.Getenv("PEPPER")
-	jwt_secret = os.Getenv("JWT_SECRET")
+	jwtSecret = os.Getenv("JWT_SECRET")
 	e, err := encryptPassword("senha1234", "", Pepper)
 	if err != nil {
 		t.Errorf("[Error] encrypting password")
@@ -91,14 +92,12 @@ func TestBase64UrlpDecode(t *testing.T) {
 	if !bytes.Equal(decodedData, []byte(`{"id":"1234567890","email":"test@email.com","encryptedPassword":"","salt":""}`)) {
 		t.Errorf("[Error] data decoded incorrectly")
 	}
-
 }
 
 func TestAuthenticate(t *testing.T) {
 	jwt := []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0.UbuPbH2mNjQUCFYY_l-ZlPkUT3L8VIWlspkTis4mFnc")
 
 	authenticated, err := authenticate(jwt)
-
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}

@@ -214,7 +214,7 @@ func isInThe10kWorstPasswords(password string) (bool, error) {
 }
 
 func signJWT(jwtContent []byte) []byte {
-	r := hmac.New(sha256.New, []byte(jwt_secret))
+	r := hmac.New(sha256.New, []byte(jwtSecret))
 	r.Write(jwtContent)
 
 	signature := r.Sum(nil)
