@@ -89,6 +89,7 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    string(jwt),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
 		Expires:  time.Now().AddDate(0, 0, 7),
 	}
 	http.SetCookie(w, authCookie)
