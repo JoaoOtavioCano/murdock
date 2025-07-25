@@ -254,12 +254,3 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Databa
 
 	return nil
 }
-
-func (s *Service) createUser(method authMethod) error {
-	idGenerator := &UUIDv7Generator{}
-
-	if err := method.createUser(idGenerator, *s.database); err != nil {
-		return err
-	}
-	return nil
-}

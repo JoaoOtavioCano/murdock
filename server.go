@@ -12,9 +12,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var Pepper string
-var jwt_secret string
-var service Service
+var (
+	Pepper     string
+	jwt_secret string
+	service    Service
+)
 
 type Service struct {
 	server   *http.Server
@@ -151,13 +153,15 @@ func (s *Service) signupHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("[Error JSON unmarshal]" + err.Error())
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
-	}	
+	}
 
-	if err = s.createUser(authMethod); err != nil {
+	idGenerator := &UUIDv7Generator{}
+
+	if err := authMethod.createUser(idGenerator, *s.database); err != nil {
 		log.Println(err)
 		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
 		return
-	} 
-	
+	}
+
 	w.WriteHeader(http.StatusCreated)
 }
