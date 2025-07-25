@@ -66,7 +66,6 @@ func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
 	}
 
 	return jwt, nil
-
 }
 
 func (s *Service) login(method authMethod) ([]byte, error) {
@@ -130,11 +129,7 @@ func isValidPassword(password string) error {
 }
 
 func isTheCorrectPassword(password01, password02 string) bool {
-	if strings.Compare(password01, password02) != 0 {
-		return false
-	}
-
-	return true
+	return strings.Compare(password01, password02) == 0
 }
 
 // PBKDF2 of at least 10,000 iterations
@@ -177,7 +172,6 @@ func issueJWT(payload any) ([]byte, error) {
 	result = []byte(string(result) + "." + string(signatureBase64UrlEncoded))
 
 	return result, nil
-
 }
 
 func base64UrlEncode(src []byte) []byte {
@@ -208,7 +202,6 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 	}
 
 	return decodedData, nil
-
 }
 
 func isInThe10kWorstPasswords(password string) (bool, error) {
@@ -221,7 +214,6 @@ func isInThe10kWorstPasswords(password string) (bool, error) {
 }
 
 func signJWT(jwtContent []byte) []byte {
-
 	r := hmac.New(sha256.New, []byte(jwt_secret))
 	r.Write(jwtContent)
 
@@ -244,29 +236,28 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Databa
 	if err != nil {
 		return err
 	}
-	
+
 	tx, err := db.db.Begin()
 	if err != nil {
 		return err
 	}
-	
+
 	if err = crateUserInDB(tx, *user); err != nil {
 		tx.Rollback()
 		return err
 	}
-	
+
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()
 		return err
 	}
-	
+
 	return nil
 }
 
 func (s *Service) createUser(method authMethod) error {
-	
 	idGenerator := &UUIDv7Generator{}
-	
+
 	if err := method.createUser(idGenerator, *s.database); err != nil {
 		return err
 	}
