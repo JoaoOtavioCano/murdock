@@ -68,21 +68,6 @@ func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
 	return jwt, nil
 }
 
-func (s *Service) login(method authMethod) ([]byte, error) {
-	var err error
-
-	if err = method.validateCredentials(); err != nil {
-		return nil, err
-	}
-
-	jwt, err := method.login(s.database)
-	if err != nil {
-		return nil, err
-	}
-
-	return jwt, nil
-}
-
 func authenticate(jwt []byte) (bool, error) {
 	var err error
 

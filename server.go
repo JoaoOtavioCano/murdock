@@ -68,7 +68,11 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jwt, err := s.login(authMethod)
+	var jwt []byte
+	if err = authMethod.validateCredentials(); err == nil {
+		jwt, err = authMethod.login(s.database)
+	}
+
 	if err != nil {
 		switch err.Error() {
 		case ErrorUserNotFound, ErrorWrongPassword:
