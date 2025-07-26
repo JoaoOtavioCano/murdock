@@ -47,7 +47,11 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 }
 
 func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
-	user, err := db.GetUserByEmail(method.Email)
+	tx, err := db.con.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("[Error][EmailPasswordMethod.login] %s", err)
+	}
+	user, err := getUserByEmailInDB(tx, method.Email)
 	if err != nil {
 		return nil, fmt.Errorf(ErrorUserNotFound)
 	}
@@ -222,7 +226,7 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Databa
 		return err
 	}
 
-	tx, err := db.db.Begin()
+	tx, err := db.con.Begin()
 	if err != nil {
 		return err
 	}
