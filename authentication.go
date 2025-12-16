@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/mail"
 	"os"
@@ -53,20 +54,20 @@ func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
 	}
 	user, err := getUserByEmailInDB(tx, method.Email)
 	if err != nil {
-		return nil, fmt.Errorf(ErrorUserNotFound)
+		return nil, errors.New(ErrorUserNotFound)
 	}
 
 	encryptedPassword, err := encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
-		return nil, fmt.Errorf(ErrorNotAbleToEncryptPassword)
+		return nil, errors.New(ErrorNotAbleToEncryptPassword)
 	}
 	if !isTheCorrectPassword(encryptedPassword, user.EncryptedPassword) {
-		return nil, fmt.Errorf(ErrorWrongPassword)
+		return nil, errors.New(ErrorWrongPassword)
 	}
 
 	jwt, err := issueJWT(user)
 	if err != nil {
-		return nil, fmt.Errorf(ErrorNotAbleToIssueJWT)
+		return nil, errors.New(ErrorNotAbleToIssueJWT)
 	}
 
 	return jwt, nil
@@ -94,7 +95,7 @@ func authenticate(jwt []byte) (bool, error) {
 
 func isValidEmail(email string) error {
 	if email == "" {
-		return fmt.Errorf(ErrorEmptyEmail)
+		return errors.New(ErrorEmptyEmail)
 	}
 	_, err := mail.ParseAddress(email)
 	return err
@@ -102,7 +103,7 @@ func isValidEmail(email string) error {
 
 func isValidPassword(password string) error {
 	if password == "" {
-		return fmt.Errorf(ErrorEmptyPassword)
+		return errors.New(ErrorEmptyPassword)
 	}
 
 	found, err := isInThe10kWorstPasswords(password)
@@ -111,7 +112,7 @@ func isValidPassword(password string) error {
 	}
 
 	if found {
-		return fmt.Errorf(ErrorFoundInWorstPassowordsList)
+		return errors.New(ErrorFoundInWorstPassowordsList)
 	}
 
 	return nil
@@ -187,7 +188,7 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 
 	_, err := base64.StdEncoding.Decode(decodedData, encodedData)
 	if err != nil {
-		return nil, fmt.Errorf("[Error] unable to decode base 64 url")
+		return nil, errors.New("[Error] unable to decode base 64 url")
 	}
 
 	return decodedData, nil
@@ -196,7 +197,7 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 func isInThe10kWorstPasswords(password string) (bool, error) {
 	data, err := os.ReadFile("10k-worst-passwords.txt")
 	if err != nil {
-		return false, fmt.Errorf("[Error] unable to read file")
+		return false, errors.New("[Error] unable to read file")
 	}
 
 	return bytes.Contains(data, []byte(password)), nil
