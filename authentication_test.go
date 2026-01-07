@@ -60,8 +60,8 @@ func TestIssueJWT(t *testing.T) {
 	}
 }
 
-func Test10kWorstPasswordsComparison(t *testing.T) {
-	found, err := isInThe10kWorstPasswords("monkey")
+func TestPasswordsBlocklist(t *testing.T) {
+	found, err := isInThePasswordsBlocklist("monkey")
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}
@@ -70,7 +70,7 @@ func Test10kWorstPasswordsComparison(t *testing.T) {
 		t.Errorf("[Error] unable to find bad password in the file")
 	}
 
-	found, err = isInThe10kWorstPasswords("EssaEamelhorsenhadomund1234@#$%ˆ&")
+	found, err = isInThePasswordsBlocklist("EssaEamelhorsenhadomund1234@#$%ˆ&")
 	if err != nil {
 		t.Errorf("[Error] something went wrong")
 	}
@@ -106,3 +106,25 @@ func TestAuthenticate(t *testing.T) {
 		t.Errorf("[Error] data not authenticated")
 	}
 }
+
+func BenchmarkInstance(b *testing.B) {
+	for b.Loop() {
+		password := "essa é minha senha. Ela tem um tamanho rasoavel"
+		validator := newDefaultValidator()
+		err := validator.validatePassword(&password)
+		if err != nil {
+			b.Errorf("[Error] something went wrong")
+		}
+	}
+}
+
+// func BenchmarkInterface(b *testing.B) {
+// 	for b.Loop() {
+// 		password := "essa é minha senha. Ela tem um tamanho rasoavel"
+// 		validator := newValidator01()
+// 		err := validator.interfaceValidatePasswordAccordingToSingleFactorRequirementsNIST(&password)
+// 		if err != nil {
+// 			b.Errorf("[Error] something went wrong")
+// 		}
+// 	}
+// }

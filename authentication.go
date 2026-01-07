@@ -11,18 +11,18 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"os"
 	"strings"
 )
 
 const (
-	ErrorUserNotFound               = "[Error] user not found"
-	ErrorWrongPassword              = "[Error] wrong password"
-	ErrorNotAbleToEncryptPassword   = "[Error] not able to encrypt password"
-	ErrorNotAbleToIssueJWT          = "[Error] not able to issue JWT"
-	ErrorEmptyPassword              = "[Error] empty password"
-	ErrorFoundInWorstPassowordsList = "[Error] found in worst passwords list"
-	ErrorEmptyEmail                 = "[Error] empty email"
+	ErrorUserNotFound             = "[Error] user not found"
+	ErrorWrongPassword            = "[Error] wrong password"
+	ErrorNotAbleToEncryptPassword = "[Error] not able to encrypt password"
+	ErrorNotAbleToIssueJWT        = "[Error] not able to issue JWT"
+	ErrorEmptyPassword            = "[Error] empty password"
+	ErrorFoundInBlocklist         = "[Error] password found in blocklist"
+	ErrorEmptyEmail               = "[Error] empty email"
+	ErrorUserAlreadyExists        = "[Error] user already exists"
 )
 
 type authMethod interface {
@@ -32,8 +32,9 @@ type authMethod interface {
 }
 
 type EmailPasswordMethod struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
+	Validator Validator `json:"-"`
 }
 
 func (method *EmailPasswordMethod) validateCredentials() error {
@@ -42,7 +43,8 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 	if err != nil {
 		return err
 	}
-	err = isValidPassword(method.Password)
+
+	err = method.Validator.validatePassword(&method.Password)
 
 	return err
 }
@@ -99,23 +101,6 @@ func isValidEmail(email string) error {
 	}
 	_, err := mail.ParseAddress(email)
 	return err
-}
-
-func isValidPassword(password string) error {
-	if password == "" {
-		return errors.New(ErrorEmptyPassword)
-	}
-
-	found, err := isInThe10kWorstPasswords(password)
-	if err != nil {
-		return err
-	}
-
-	if found {
-		return errors.New(ErrorFoundInWorstPassowordsList)
-	}
-
-	return nil
 }
 
 func isTheCorrectPassword(password01, password02 string) bool {
@@ -194,15 +179,6 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 	return decodedData, nil
 }
 
-func isInThe10kWorstPasswords(password string) (bool, error) {
-	data, err := os.ReadFile("10k-worst-passwords.txt")
-	if err != nil {
-		return false, errors.New("[Error] unable to read file")
-	}
-
-	return bytes.Contains(data, []byte(password)), nil
-}
-
 func signJWT(jwtContent []byte) []byte {
 	r := hmac.New(sha256.New, []byte(jwtSecret))
 	r.Write(jwtContent)
@@ -234,6 +210,9 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Databa
 
 	if err = crateUserInDB(tx, *user); err != nil {
 		tx.Rollback()
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			err = errors.New(ErrorUserAlreadyExists)
+		}
 		return err
 	}
 

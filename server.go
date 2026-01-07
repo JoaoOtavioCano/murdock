@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -15,7 +16,6 @@ import (
 var (
 	Pepper    string
 	jwtSecret string
-	service   Service
 )
 
 type Service struct {
@@ -58,8 +58,9 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authMethod := &EmailPasswordMethod{
-		Email:    "",
-		Password: "",
+		Email:     "",
+		Password:  "",
+		Validator: newDefaultValidator(),
 	}
 
 	if err = json.Unmarshal(body, authMethod); err != nil {
@@ -76,6 +77,7 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err.Error() {
 		case ErrorUserNotFound, ErrorWrongPassword:
+			log.Println(err.Error())
 			http.Error(w, "invalid email and/or password", http.StatusNotFound)
 			return
 		case ErrorEmptyPassword, ErrorEmptyEmail:
@@ -150,8 +152,9 @@ func (s *Service) signupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authMethod := &EmailPasswordMethod{
-		Email:    "",
-		Password: "",
+		Email:     "",
+		Password:  "",
+		Validator: newDefaultValidator(),
 	}
 
 	if err = json.Unmarshal(body, authMethod); err != nil {
@@ -164,7 +167,13 @@ func (s *Service) signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := authMethod.createUser(idGenerator, *s.database); err != nil {
 		log.Println(err)
-		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		if strings.Contains(err.Error(), "[Validation Error]") {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		} else if strings.EqualFold(err.Error(), ErrorUserAlreadyExists) {
+			http.Error(w, ErrorUserAlreadyExists, http.StatusUnprocessableEntity)
+		} else {
+			http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		}
 		return
 	}
 
