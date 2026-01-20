@@ -3,6 +3,7 @@
 [x] how to generate salts
 [x] password requirements (size, characters needed)
 [x] is there any difference in the database that should be implemented for security?
+[] implement hexagonal architecture
 [] how to generate pepper
 [] increase time that the sign in takes every try needed
 [] embed 10k worst passwords file

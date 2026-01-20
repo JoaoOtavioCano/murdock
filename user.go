@@ -12,6 +12,7 @@ type User struct {
 	Email             string `json:"email"`
 	EncryptedPassword string `json:"-"`
 	Salt              string `json:"-"`
+	Status            string `json: "status"`
 }
 
 func newUser() *User {
@@ -26,10 +27,10 @@ func createSalt() string {
 
 func crateUserInDB(tx *sql.Tx, u User) error {
 	query := `
-		INSERT INTO users(id, email, encryptedPassword, salt)
-		VALUES($1, $2, $3, $4)`
+		INSERT INTO users(id, email, encryptedPassword, salt, status)
+		VALUES($1, $2, $3, $4, $5)`
 
-	if _, err := tx.Exec(query, u.Id, u.Email, u.EncryptedPassword, u.Salt); err != nil {
+	if _, err := tx.Exec(query, u.Id, u.Email, u.EncryptedPassword, u.Salt, u.Status); err != nil {
 		return fmt.Errorf("[DATABASE ERROR] %s", err.Error())
 	}
 
@@ -49,20 +50,33 @@ func getUserByEmailInDB(tx *sql.Tx, emailAddr string) (*User, error) {
 			Email:             "example@email.com",
 			EncryptedPassword: e,
 			Salt:              "",
+			Status:            "active",
 		}, nil
 	}
 
 	usr := newUser()
 	query := `
-		SELECT id, email, encryptedPassword, salt FROM USERS 
+		SELECT id, email, encryptedPassword, salt, status FROM USERS 
 		WHERE email = $1;
 	`
 	row := tx.QueryRow(query, emailAddr)
 
-	err := row.Scan(&usr.Id, &usr.Email, &usr.EncryptedPassword, &usr.Salt)
+	err := row.Scan(&usr.Id, &usr.Email, &usr.EncryptedPassword, &usr.Salt, &usr.Status)
 	if err != nil {
 		return &User{}, fmt.Errorf("[Error][getUserByEmailInDB] %s", err)
 	}
 
 	return usr, nil
+}
+
+func lockUser(tx DBExecutor, usrID string) error {
+	query := `
+		UPDATE users SET status='locked' WHERE id=$1;
+	`
+	_, err := tx.Exec(query, usrID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

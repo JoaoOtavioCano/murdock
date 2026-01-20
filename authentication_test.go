@@ -49,13 +49,14 @@ func TestIssueJWT(t *testing.T) {
 		Email:             "example@email.com",
 		EncryptedPassword: e,
 		Salt:              "",
+		Status:            "active",
 	}
 	jwt, err := issueJWT(user)
 	if err != nil {
 		t.Errorf("[Error] something went wrong issuing jwt")
 	}
 
-	if !bytes.Equal(jwt, []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OSIsImVtYWlsIjoiZXhhbXBsZUBlbWFpbC5jb20ifQ.Nfnw24aDs6FcO4YJ2-Mje8bj1RLjmsG1DCbxI-0DZkI")) {
+	if !bytes.Equal(jwt, []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1Njc4OSIsImVtYWlsIjoiZXhhbXBsZUBlbWFpbC5jb20iLCJTdGF0dXMiOiJhY3RpdmUifQ.U-HNkldU_OepoLrImP3PVNFZrlSSpkshrSPRIcwf8I0")) {
 		t.Errorf("[Error] invalid jwt")
 	}
 }

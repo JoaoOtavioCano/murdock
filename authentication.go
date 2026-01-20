@@ -23,11 +23,12 @@ const (
 	ErrorFoundInBlocklist         = "[Error] password found in blocklist"
 	ErrorEmptyEmail               = "[Error] empty email"
 	ErrorUserAlreadyExists        = "[Error] user already exists"
+	ErrorUserLocked               = "user is locked"
 )
 
 type authMethod interface {
 	validateCredentials() error
-	login(db *Database) ([]byte, error)
+	login(db *Database, lt *LoginThrottler) ([]byte, error)
 	createUser(idGenerator idGenerator, db Database) error
 }
 
@@ -49,7 +50,7 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 	return err
 }
 
-func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
+func (method *EmailPasswordMethod) login(db *Database, lt *LoginThrottler) ([]byte, error) {
 	tx, err := db.con.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("[Error][EmailPasswordMethod.login] %s", err)
@@ -59,11 +60,17 @@ func (method *EmailPasswordMethod) login(db *Database) ([]byte, error) {
 		return nil, errors.New(ErrorUserNotFound)
 	}
 
+	if user.Status == "locked" {
+		return nil, errors.New(ErrorUserLocked)
+	}
 	encryptedPassword, err := encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
 		return nil, errors.New(ErrorNotAbleToEncryptPassword)
 	}
 	if !isTheCorrectPassword(encryptedPassword, user.EncryptedPassword) {
+		if err = lt.HandleLoginFailure(user.Id, db); err != nil {
+			return nil, err
+		}
 		return nil, errors.New(ErrorWrongPassword)
 	}
 
@@ -198,6 +205,7 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Databa
 	user.Id = hex.EncodeToString(idGenerator.generateId())
 	user.Email = method.Email
 	user.Salt = createSalt()
+	user.Status = "active"
 	user.EncryptedPassword, err = encryptPassword(method.Password, user.Salt, Pepper)
 	if err != nil {
 		return err

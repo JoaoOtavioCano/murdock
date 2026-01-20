@@ -19,8 +19,9 @@ var (
 )
 
 type Service struct {
-	server   *http.Server
-	database *Database
+	server         *http.Server
+	database       *Database
+	loginThrottler *LoginThrottler
 }
 
 func (s *Service) start() {
@@ -36,6 +37,8 @@ func (s *Service) start() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	s.loginThrottler = NewLoginThrottler()
 
 	s.server = &http.Server{
 		Addr:                         ":80",
@@ -71,7 +74,7 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	var jwt []byte
 	if err = authMethod.validateCredentials(); err == nil {
-		jwt, err = authMethod.login(s.database)
+		jwt, err = authMethod.login(s.database, s.loginThrottler)
 	}
 
 	if err != nil {
@@ -83,6 +86,10 @@ func (s *Service) signinHandler(w http.ResponseWriter, r *http.Request) {
 		case ErrorEmptyPassword, ErrorEmptyEmail:
 			http.Error(w, "missing values", http.StatusBadRequest)
 			return
+		case ErrorUserLocked:
+			http.Error(w, ErrorUserLocked, http.StatusUnauthorized)
+		case ErrorUserExceededMaxNumOfAttempts:
+			http.Error(w, ErrorUserExceededMaxNumOfAttempts, http.StatusTooManyRequests)
 		default:
 			log.Println(err)
 			http.Error(w, "something went wrong", http.StatusInternalServerError)
