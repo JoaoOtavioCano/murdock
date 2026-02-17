@@ -1,4 +1,4 @@
-package main
+package application
 
 import (
 	"crypto/rand"
@@ -14,9 +14,9 @@ type idGenerator interface {
 // https://datatracker.ietf.org/doc/rfc9562/
 type UUIDv7Generator struct{}
 
-func (g *UUIDv7Generator) generateId() []byte{
+func (g *UUIDv7Generator) generateId() []byte {
 	uuid := make([]byte, 16)
-	
+
 	// Timestamp in Unix milliseconds
 	unixMs := uint64(time.Now().UnixMilli())
 	unixMs = unixMs << 16
@@ -33,7 +33,7 @@ func (g *UUIDv7Generator) generateId() []byte{
 	// No error handling because Go garantees Read always succeeds.
 	randomBits := make([]byte, 10)
 	rand.Read(randomBits)
-	
+
 	copy(uuid[6:], randomBits)
 	uuid[6] = uuid[6] & 0b00001111 // clean the 4 most singnificant bits
 	uuid[6] = uuid[6] | byte(version)
@@ -42,4 +42,3 @@ func (g *UUIDv7Generator) generateId() []byte{
 
 	return uuid
 }
-

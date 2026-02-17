@@ -1,4 +1,4 @@
-package main
+package application
 
 import (
 	"bytes"
@@ -9,33 +9,42 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/mail"
 	"strings"
-)
 
-const (
-	ErrorUserNotFound             = "[Error] user not found"
-	ErrorWrongPassword            = "[Error] wrong password"
-	ErrorNotAbleToEncryptPassword = "[Error] not able to encrypt password"
-	ErrorNotAbleToIssueJWT        = "[Error] not able to issue JWT"
-	ErrorEmptyPassword            = "[Error] empty password"
-	ErrorFoundInBlocklist         = "[Error] password found in blocklist"
-	ErrorEmptyEmail               = "[Error] empty email"
-	ErrorUserAlreadyExists        = "[Error] user already exists"
-	ErrorUserLocked               = "user is locked"
+	"github.com/JoaoOtavioCano/murdock/application/models"
+	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
+	"github.com/JoaoOtavioCano/murdock/ports/inbound"
+	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 )
 
 type authMethod interface {
 	validateCredentials() error
-	login(db *Database, lt *LoginThrottler) ([]byte, error)
-	createUser(idGenerator idGenerator, db Database) error
+	login(db outbound.Database, lt *LoginThrottler) ([]byte, error)
+	createUser(idGenerator idGenerator, db outbound.Database) error
+	authenticate(token []byte) (bool, error)
+	parseAuthReq(inbound.AuthReq)
 }
 
 type EmailPasswordMethod struct {
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
 	Validator Validator `json:"-"`
+	Pepper    string    `json:"-"`
+	jwtSecret string    `json:"-"`
+}
+
+func newEmailPasswordMethod(pepper, secKey string) *EmailPasswordMethod {
+	return &EmailPasswordMethod{
+		Validator: newDefaultValidator(),
+		Pepper:    pepper,
+		jwtSecret: secKey,
+	}
+}
+
+func (method *EmailPasswordMethod) parseAuthReq(r inbound.AuthReq) {
+	method.Email = r.Data["email"]
+	method.Password = r.Data["password"]
 }
 
 func (method *EmailPasswordMethod) validateCredentials() error {
@@ -50,42 +59,38 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 	return err
 }
 
-func (method *EmailPasswordMethod) login(db *Database, lt *LoginThrottler) ([]byte, error) {
-	tx, err := db.con.Begin()
+func (method *EmailPasswordMethod) login(db outbound.Database, lt *LoginThrottler) ([]byte, error) {
+	user, err := db.GetUserByEmailInDB(method.Email)
 	if err != nil {
-		return nil, fmt.Errorf("[Error][EmailPasswordMethod.login] %s", err)
-	}
-	user, err := getUserByEmailInDB(tx, method.Email)
-	if err != nil {
-		return nil, errors.New(ErrorUserNotFound)
+		return nil, customErr.UserNotFoundError{}
 	}
 
-	if user.Status == "locked" {
-		return nil, errors.New(ErrorUserLocked)
+	if user.Status == models.StatusLocked {
+		return nil, customErr.UserLockedError{}
 	}
-	encryptedPassword, err := encryptPassword(method.Password, user.Salt, Pepper)
+	encryptedPassword, err := EncryptPassword(method.Password, user.Salt, method.Pepper)
 	if err != nil {
-		return nil, errors.New(ErrorNotAbleToEncryptPassword)
+		return nil, customErr.NotAbleToEncryptPasswordError{}
 	}
 	if !isTheCorrectPassword(encryptedPassword, user.EncryptedPassword) {
-		if err = lt.HandleLoginFailure(user.Id, db); err != nil {
+		if err = lt.HandleLoginFailure(user.Id); err != nil {
 			return nil, err
 		}
-		return nil, errors.New(ErrorWrongPassword)
+		return nil, customErr.WrongPasswordError{}
 	}
 
-	jwt, err := issueJWT(user)
+	jwt, err := issueJWT(user, method.jwtSecret)
 	if err != nil {
-		return nil, errors.New(ErrorNotAbleToIssueJWT)
+		return nil, customErr.NotAbleToIssueJWTError{}
 	}
 
 	return jwt, nil
 }
 
-func authenticate(jwt []byte) (bool, error) {
+func (method *EmailPasswordMethod) authenticate(token []byte) (bool, error) {
 	var err error
 
-	jwtSections := bytes.Split(jwt, []byte("."))
+	jwtSections := bytes.Split(token, []byte("."))
 
 	header := jwtSections[0]
 	payload := jwtSections[1]
@@ -95,7 +100,7 @@ func authenticate(jwt []byte) (bool, error) {
 	}
 
 	jwtContent := []byte(string(header) + "." + string(payload))
-	expectedSignature := signJWT(jwtContent)
+	expectedSignature := signJWT(jwtContent, method.jwtSecret)
 
 	signature = signature[:len(signature)-1]
 
@@ -104,7 +109,7 @@ func authenticate(jwt []byte) (bool, error) {
 
 func isValidEmail(email string) error {
 	if email == "" {
-		return errors.New(ErrorEmptyEmail)
+		return customErr.EmptyEmailError{}
 	}
 	_, err := mail.ParseAddress(email)
 	return err
@@ -116,7 +121,7 @@ func isTheCorrectPassword(password01, password02 string) bool {
 
 // PBKDF2 of at least 10,000 iterations
 // Link to NIST SP800-63B: https://pages.nist.gov/800-63-3/sp800-63b.html#For%20PBKDF2,%20the%20cost%20factor%20is%20an%20iteration%20count:%20the%20more%20times%20the%20PBKDF2%20function%20is%20iterated,%20the%20longer%20it%20takes%20to%20compute%20the%20password%20hash.%20Therefore,%20the%20iteration%20count%20SHOULD%20be%20as%20large%20as%20verification%20server%20performance%20will%20allow,%20typically%20at%20least%2010,000%20iterations.:~:text=For%20PBKDF2%2C%20the%20cost%20factor%20is%20an%20iteration%20count%3A%20the%20more%20times%20the%20PBKDF2%20function%20is%20iterated%2C%20the%20longer%20it%20takes%20to%20compute%20the%20password%20hash.%20Therefore%2C%20the%20iteration%20count%20SHOULD%20be%20as%20large%20as%20verification%20server%20performance%20will%20allow%2C%20typically%20at%20least%2010%2C000%20iterations.
-func encryptPassword(password, salt, pepper string) (string, error) {
+func EncryptPassword(password, salt, pepper string) (string, error) {
 	encryptedPassword, err := pbkdf2.Key(sha256.New, password+pepper, []byte(salt), 10000, 32)
 	if err != nil {
 		return "", err
@@ -126,7 +131,7 @@ func encryptPassword(password, salt, pepper string) (string, error) {
 
 // Json Web Token (JWT) implementation
 // link: https://jwt.io/introduction
-func issueJWT(payload any) ([]byte, error) {
+func issueJWT(payload any, jwtSecret string) ([]byte, error) {
 	header := struct {
 		Alg string `json:"alg"`
 		Typ string `json:"typ"`
@@ -148,7 +153,7 @@ func issueJWT(payload any) ([]byte, error) {
 
 	result := []byte(string(headerBase64UrlEncoded) + "." + string(payloadBase64UrlEncoded))
 
-	signature := signJWT(result)
+	signature := signJWT(result, jwtSecret)
 	signatureBase64UrlEncoded := base64UrlEncode(signature)
 
 	result = []byte(string(result) + "." + string(signatureBase64UrlEncoded))
@@ -186,7 +191,7 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 	return decodedData, nil
 }
 
-func signJWT(jwtContent []byte) []byte {
+func signJWT(jwtContent []byte, jwtSecret string) []byte {
 	r := hmac.New(sha256.New, []byte(jwtSecret))
 	r.Write(jwtContent)
 
@@ -195,37 +200,26 @@ func signJWT(jwtContent []byte) []byte {
 	return signature
 }
 
-func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db Database) error {
+func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbound.Database) error {
 	err := method.validateCredentials()
 	if err != nil {
 		return err
 	}
 
-	user := newUser()
+	user := models.NewUser()
 	user.Id = hex.EncodeToString(idGenerator.generateId())
 	user.Email = method.Email
-	user.Salt = createSalt()
+	user.Salt = models.CreateSalt()
 	user.Status = "active"
-	user.EncryptedPassword, err = encryptPassword(method.Password, user.Salt, Pepper)
+	user.EncryptedPassword, err = EncryptPassword(method.Password, user.Salt, method.Pepper)
 	if err != nil {
 		return err
 	}
 
-	tx, err := db.con.Begin()
-	if err != nil {
-		return err
-	}
-
-	if err = crateUserInDB(tx, *user); err != nil {
-		tx.Rollback()
+	if err = db.CreateUserInDB(*user); err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			err = errors.New(ErrorUserAlreadyExists)
+			err = customErr.UserAlreadyExistsError{}
 		}
-		return err
-	}
-
-	if err = tx.Commit(); err != nil {
-		tx.Rollback()
 		return err
 	}
 

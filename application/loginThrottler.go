@@ -1,9 +1,11 @@
-package main
+package application
 
 import (
-	"errors"
 	"sync"
 	"time"
+
+	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
+	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 )
 
 const (
@@ -15,6 +17,7 @@ const (
 type LoginThrottler struct {
 	loginAttempts map[string]loginAttempt
 	mx            *sync.Mutex
+	db            outbound.Database
 }
 
 type loginAttempt struct {
@@ -22,15 +25,16 @@ type loginAttempt struct {
 	expiresAt time.Time
 }
 
-func NewLoginThrottler() *LoginThrottler {
+func NewLoginThrottler(db outbound.Database) *LoginThrottler {
 	var mx sync.Mutex
 	return &LoginThrottler{
 		loginAttempts: make(map[string]loginAttempt),
 		mx:            &mx,
+		db:            db,
 	}
 }
 
-func (lt *LoginThrottler) HandleLoginFailure(usrID string, db *Database) error {
+func (lt *LoginThrottler) HandleLoginFailure(usrID string) error {
 	lt.mx.Lock()
 	usrAttemps := lt.loginAttempts[usrID]
 	lt.mx.Unlock()
@@ -47,23 +51,10 @@ func (lt *LoginThrottler) HandleLoginFailure(usrID string, db *Database) error {
 	lt.mx.Unlock()
 
 	if usrAttemps.n >= lockoutThreshold {
-		tx, err := db.con.Begin()
-		if err != nil {
+		if err := lt.db.LockUser(usrID); err != nil {
 			return err
 		}
-		defer tx.Rollback()
-
-		if err = lockUser(tx, usrID); err != nil {
-			return err
-		}
-
-		if err = tx.Commit(); err != nil {
-			if err = tx.Commit(); err != nil {
-				return err
-			}
-		}
-
-		return errors.New(ErrorUserExceededMaxNumOfAttempts)
+		return customErr.UserExceededMaxNumOfAttemptsError{}
 	}
 
 	return nil

@@ -5,9 +5,9 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
+	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
 	"github.com/JoaoOtavioCano/murdock/ports/inbound"
 	_ "github.com/lib/pq"
 )
@@ -53,23 +53,22 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.authService.Login(*authReq)
 	if err != nil {
+		var statusCode int
 		switch err.Error() {
-		case ErrorUserNotFound, ErrorWrongPassword:
-			log.Println(err.Error())
-			http.Error(w, "invalid email and/or password", http.StatusNotFound)
-			return
-		case ErrorEmptyPassword, ErrorEmptyEmail:
-			http.Error(w, "missing values", http.StatusBadRequest)
-			return
-		case ErrorUserLocked:
-			http.Error(w, ErrorUserLocked, http.StatusUnauthorized)
-		case ErrorUserExceededMaxNumOfAttempts:
-			http.Error(w, ErrorUserExceededMaxNumOfAttempts, http.StatusTooManyRequests)
+		case "invalid email and/or password":
+			statusCode = http.StatusNotFound
+		case "missing values":
+			statusCode = http.StatusBadRequest
+		case customErr.UserLockedError{}.Error():
+			statusCode = http.StatusUnauthorized
+		case customErr.UserExceededMaxNumOfAttemptsError{}.Error():
+			statusCode = http.StatusTooManyRequests
 		default:
-			log.Println(err)
-			http.Error(w, "something went wrong", http.StatusInternalServerError)
-			return
+			statusCode = http.StatusInternalServerError
 		}
+		log.Printf("[http resp] statusCode: %d - body: %s", statusCode, err.Error())
+		http.Error(w, err.Error(), statusCode)
+		return
 	}
 
 	authCookie := &http.Cookie{
@@ -130,13 +129,15 @@ func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.authService.Signup(*authReq); err != nil {
 		log.Println(err)
-		if strings.Contains(err.Error(), "[Validation Error]") {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		} else if strings.EqualFold(err.Error(), ErrorUserAlreadyExists) {
-			http.Error(w, ErrorUserAlreadyExists, http.StatusUnprocessableEntity)
-		} else {
-			http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		var statusCode int
+		switch err.(type) {
+		case customErr.ValidationError, customErr.UserAlreadyExistsError:
+			statusCode = http.StatusUnprocessableEntity
+		default:
+			statusCode = http.StatusInternalServerError
+
 		}
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 

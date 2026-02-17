@@ -3,15 +3,15 @@
 [x] how to generate salts
 [x] password requirements (size, characters needed)
 [x] is there any difference in the database that should be implemented for security?
-[] implement hexagonal architecture
+[x] implement hexagonal architecture
 [] how to generate pepper
-[] increase time that the sign in takes every try needed
+[x] increase time that the sign in takes every try needed
 [] embed 10k worst passwords file
 [] hash map of most common passwords?
 [] better error handling (better messages)
 [] evaluate salt and encrypted password hex encoding length
 [] should an index be created for the email?
-[] create a Authenticator type responsible for the authentication separated from the server. This would allow different APIs(REST, websocket, gRPC)
+[x] create a Authenticator type responsible for the authentication separated from the server. This would allow different APIs(REST, websocket, gRPC)
 [] cache implementation?
 [] docker setup
 [] email confirmation

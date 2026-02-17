@@ -8,6 +8,6 @@ type AuthPort interface {
 }
 
 type AuthReq struct {
-	Method string         `json:"method"`
-	Data   map[string]any `json:"data"`
+	Method string            `json:"method"`
+	Data   map[string]string `json:"data"`
 }

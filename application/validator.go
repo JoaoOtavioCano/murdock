@@ -1,10 +1,12 @@
-package main
+package application
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"os"
+
+	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -47,7 +49,7 @@ func (v *NISTSingleFactorPassworsValidator) validatePassword(password *string) e
 	}
 
 	if found {
-		return errors.New(ErrorFoundInBlocklist)
+		return customErr.FoundInBlocklistError{}
 	}
 
 	return nil
@@ -78,7 +80,7 @@ func (NISTMultiFactorPassworsValidator) validatePassword(password *string) error
 	}
 
 	if found {
-		return errors.New(ErrorFoundInBlocklist)
+		return customErr.FoundInBlocklistError{}
 	}
 
 	return nil
