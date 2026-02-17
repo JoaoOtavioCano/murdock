@@ -39,7 +39,7 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.Unmarshal(body, authReq); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
-		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -67,7 +67,7 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 			statusCode = http.StatusInternalServerError
 		}
 		log.Printf("[http resp] statusCode: %d - body: %s", statusCode, err.Error())
-		http.Error(w, err.Error(), statusCode)
+		s.errorResponse(w, err.Error(), statusCode)
 		return
 	}
 
@@ -82,14 +82,14 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, authCookie)
 
 	w.Header().Add("Authorization", string(token))
-	w.WriteHeader(http.StatusOK)
+	s.successResponse(w, nil, http.StatusOK)
 }
 
 func (s *HttpServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -97,25 +97,25 @@ func (s *HttpServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.Unmarshal(body, authReq); err != nil {
 		log.Println(err)
-		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
 	err = s.authService.Check(*authReq)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	s.successResponse(w, nil, http.StatusNoContent)
 }
 
 func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "somethig went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.Unmarshal(body, authReq); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
-		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -137,9 +137,29 @@ func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 			statusCode = http.StatusInternalServerError
 
 		}
-		http.Error(w, err.Error(), statusCode)
+		s.errorResponse(w, err.Error(), statusCode)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	s.successResponse(w, nil, http.StatusCreated)
+}
+
+func (s *HttpServer) errorResponse(w http.ResponseWriter, msg string, statusCode int) {
+	log.Printf("[http resp] statusCode: %d - msg: %s", statusCode, msg)
+	resp, _ := json.Marshal(map[string]any{
+		"error": map[string]string{
+			"message": msg,
+		},
+	})
+	http.Error(w, string(resp), statusCode)
+}
+
+func (s *HttpServer) successResponse(w http.ResponseWriter, body []byte, statusCode int) {
+	log.Printf("[http resp] statusCode: %d - body: %s", statusCode, string(body))
+	w.WriteHeader(statusCode)
+	if body != nil {
+		if _, err := w.Write(body); err != nil {
+			s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+		}
+	}
 }
