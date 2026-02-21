@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/JoaoOtavioCano/murdock/adapters/database/postgres"
-	"github.com/JoaoOtavioCano/murdock/adapters/httpAdapter"
+	httpadapter "github.com/JoaoOtavioCano/murdock/adapters/httpAdapter"
 	"github.com/JoaoOtavioCano/murdock/application"
 	"github.com/joho/godotenv"
 )
@@ -24,7 +24,7 @@ func main() {
 	}
 	lt := application.NewLoginThrottler(db)
 	authService := application.NewAuthService(db, lt, jwtSecret, pepper)
-	server := httpAdapter.NewHttpServer(port, authService)
+	server := httpadapter.NewHTTPServer(port, authService)
 
 	server.Start()
 }

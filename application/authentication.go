@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strings"
 
@@ -27,18 +28,20 @@ type authMethod interface {
 }
 
 type EmailPasswordMethod struct {
-	Email     string    `json:"email"`
-	Password  string    `json:"password"`
-	Validator Validator `json:"-"`
-	Pepper    string    `json:"-"`
-	jwtSecret string    `json:"-"`
+	Email        string                    `json:"email"`
+	Password     string                    `json:"password"`
+	Validator    Validator                 `json:"-"`
+	Pepper       string                    `json:"-"`
+	jwtSecret    string                    `json:"-"`
+	emailService outbound.NotificationPort `json:"-"`
 }
 
-func newEmailPasswordMethod(pepper, secKey string) *EmailPasswordMethod {
+func newEmailPasswordMethod(pepper, secKey string, emailService outbound.NotificationPort) *EmailPasswordMethod {
 	return &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
-		Pepper:    pepper,
-		jwtSecret: secKey,
+		Validator:    newDefaultValidator(),
+		Pepper:       pepper,
+		jwtSecret:    secKey,
+		emailService: emailService,
 	}
 }
 
@@ -210,7 +213,7 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 	user.Id = hex.EncodeToString(idGenerator.generateId())
 	user.Email = method.Email
 	user.Salt = models.CreateSalt()
-	user.Status = "active"
+	user.Status = models.StatusPending
 	user.EncryptedPassword, err = EncryptPassword(method.Password, user.Salt, method.Pepper)
 	if err != nil {
 		return err
@@ -220,6 +223,16 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			err = customErr.UserAlreadyExistsError{}
 		}
+		return err
+	}
+
+	code, err := models.NewConfirmationCode()
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("Please use the following confirmation code to complete your setup. This code will expire in %d minutes.", models.TTLInMin)
+	if err = method.emailService.SendConfirmationCode(user.Email, []byte(msg), code.GetCode()); err != nil {
+		db.DeleteUserInDB(user.Id)
 		return err
 	}
 

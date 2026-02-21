@@ -18,6 +18,7 @@
 [] evaluate salt and encrypted password hex encoding length
 [] should an index be created for the email?
 [] cache implementation?
+[] create a event based error handling.Ex: in signup, send email fails and delete user from database fails
 
 # passwords composition
 [NIST Document](https://pages.nist.gov/800-63-4/sp800-63b.html#appA)

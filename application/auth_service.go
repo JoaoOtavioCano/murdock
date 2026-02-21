@@ -12,10 +12,11 @@ import (
 )
 
 type AuthService struct {
-	jwtSecretKey   string
-	database       outbound.Database
-	loginThrottler *LoginThrottler
-	pepper         string
+	jwtSecretKey         string
+	database             outbound.Database
+	loginThrottler       *LoginThrottler
+	pepper               string
+	notificationServices map[outbound.NotificationType]outbound.NotificationPort
 }
 
 func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper string) *AuthService {
@@ -31,7 +32,7 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey)
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
 		authMethod.parseAuthReq(r)
 	default:
 		return nil, errors.New("authentication method not found")
@@ -66,7 +67,7 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey)
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
 	default:
 		return errors.New("authentication method not found")
 	}
@@ -93,7 +94,7 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey)
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification])
 		authMethod.parseAuthReq(r)
 	default:
 		return errors.New("authentication method not found")

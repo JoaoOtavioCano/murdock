@@ -111,3 +111,25 @@ func (db *Database) CreateUserInDB(u models.User) error {
 
 	return nil
 }
+
+func (db *Database) DeleteUserInDB(id string) error {
+	tx, err := db.con.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `DELETE FROM users WHERE id=$1`
+
+	if _, err := tx.Exec(query, id); err != nil {
+		return fmt.Errorf("[DATABASE ERROR] %s", err.Error())
+	}
+
+	if err = tx.Commit(); err != nil {
+		if err = tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

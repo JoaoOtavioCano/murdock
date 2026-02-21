@@ -1,4 +1,6 @@
-package httpAdapter
+// Package httpadapter implements a http server to act as a entrypoint
+// for the authentication service.
+package httpadapter
 
 import (
 	"encoding/json"
@@ -12,13 +14,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type HttpServer struct {
+type HTTPServer struct {
 	server      *http.Server
 	authService inbound.AuthPort
 }
 
-func NewHttpServer(port string, authService inbound.AuthPort) *HttpServer {
-	return &HttpServer{
+func NewHTTPServer(port string, authService inbound.AuthPort) *HTTPServer {
+	return &HTTPServer{
 		server: &http.Server{
 			Addr:                         port,
 			DisableGeneralOptionsHandler: false,
@@ -27,7 +29,7 @@ func NewHttpServer(port string, authService inbound.AuthPort) *HttpServer {
 	}
 }
 
-func (s *HttpServer) Start() {
+func (s *HTTPServer) Start() {
 	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
@@ -35,7 +37,7 @@ func (s *HttpServer) Start() {
 	log.Fatal(s.server.ListenAndServe())
 }
 
-func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
@@ -85,7 +87,7 @@ func (s *HttpServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 	s.successResponse(w, nil, http.StatusOK)
 }
 
-func (s *HttpServer) checkHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
@@ -111,7 +113,7 @@ func (s *HttpServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 	s.successResponse(w, nil, http.StatusNoContent)
 }
 
-func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
@@ -144,7 +146,7 @@ func (s *HttpServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 	s.successResponse(w, nil, http.StatusCreated)
 }
 
-func (s *HttpServer) errorResponse(w http.ResponseWriter, msg string, statusCode int) {
+func (s *HTTPServer) errorResponse(w http.ResponseWriter, msg string, statusCode int) {
 	log.Printf("[http resp] statusCode: %d - msg: %s", statusCode, msg)
 	resp, _ := json.Marshal(map[string]any{
 		"error": map[string]string{
@@ -154,7 +156,7 @@ func (s *HttpServer) errorResponse(w http.ResponseWriter, msg string, statusCode
 	http.Error(w, string(resp), statusCode)
 }
 
-func (s *HttpServer) successResponse(w http.ResponseWriter, body []byte, statusCode int) {
+func (s *HTTPServer) successResponse(w http.ResponseWriter, body []byte, statusCode int) {
 	log.Printf("[http resp] statusCode: %d - body: %s", statusCode, string(body))
 	w.WriteHeader(statusCode)
 	if body != nil {
