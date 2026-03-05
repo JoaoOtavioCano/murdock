@@ -2,8 +2,11 @@ package application
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"time"
 
+	"github.com/JoaoOtavioCano/murdock/application/models"
 	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
 	"github.com/JoaoOtavioCano/murdock/ports/inbound"
 	"github.com/JoaoOtavioCano/murdock/ports/outbound"
@@ -110,5 +113,54 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 }
 
 func (authSer *AuthService) Delete(r inbound.AuthReq) error {
+	return nil
+}
+
+func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string) error {
+	if digitalAddr == "" || code == "" {
+		errMsg := fmt.Sprintf("values for digitalAdd and code are invalid: (digitalAdd=%s, code=%s)", digitalAddr, code)
+		log.Println(errMsg)
+		return errors.New(errMsg)
+	}
+
+	tx, err := authSer.database.BeginTx()
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	defer tx.Rollback()
+
+	cc, err := authSer.database.GetConfirmationCode(code, digitalAddr, tx)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+
+	now := time.Now()
+
+	if cc.GetExpireAt().Before(now) {
+		return customErr.ConfirmationCodeExpiredError{}
+	}
+
+	switch cc.GetCodeType() {
+	case models.TypeUpdateEmail:
+		authSer.database.UpdateUserEmail(cc.GetUserId(), cc.GetData(), tx)
+	case models.TypeCreateAccount:
+		authSer.database.ActivateUser(cc.GetUserId(), tx)
+	case models.TypeUpdatePassword:
+		authSer.database.UpdateUserPassword(cc.GetUserId(), cc.GetData(), tx)
+	}
+
+	if err = authSer.database.DeleteConfirmationCode(code, digitalAddr, tx); err != nil {
+		log.Println(err.Error())
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		if err = tx.Commit(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

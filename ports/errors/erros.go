@@ -70,3 +70,9 @@ type UserExceededMaxNumOfAttemptsError struct{}
 func (e UserExceededMaxNumOfAttemptsError) Error() string {
 	return "user locked because too many login attempts failed"
 }
+
+type ConfirmationCodeExpiredError struct{}
+
+func (e ConfirmationCodeExpiredError) Error() string {
+	return "code expired"
+}

@@ -63,7 +63,7 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 }
 
 func (method *EmailPasswordMethod) login(db outbound.Database, lt *LoginThrottler) ([]byte, error) {
-	user, err := db.GetUserByEmailInDB(method.Email)
+	user, err := db.GetUserByEmailInDB(method.Email, nil)
 	if err != nil {
 		return nil, customErr.UserNotFoundError{}
 	}
@@ -219,20 +219,32 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 		return err
 	}
 
-	if err = db.CreateUserInDB(*user); err != nil {
+	dbTx, err := db.BeginTx()
+	if err != nil {
+		return err
+	}
+	defer dbTx.Rollback()
+
+	if err = db.CreateUserInDB(*user, dbTx); err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			err = customErr.UserAlreadyExistsError{}
 		}
 		return err
 	}
 
-	code, err := models.NewConfirmationCode()
+	code, err := models.NewConfirmationCode(user.Id, user.Email, models.TypeCreateAccount, "")
 	if err != nil {
 		return err
 	}
+
+	if err = db.SaveConfirmationCode(code, dbTx); err != nil {
+		return err
+	}
+
+	dbTx.Commit()
+
 	msg := fmt.Sprintf("Please use the following confirmation code to complete your setup. This code will expire in %d minutes.", models.TTLInMin)
 	if err = method.emailService.SendConfirmationCode(user.Email, []byte(msg), code.GetCode()); err != nil {
-		db.DeleteUserInDB(user.Id)
 		return err
 	}
 
