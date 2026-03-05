@@ -11,7 +11,7 @@ func TestNewConfirmationCode(t *testing.T) {
 	now := time.Now()
 	upperLim := now.Add(TTLInMin * time.Minute).Add(allowedVariation)
 	lowerLim := now.Add(TTLInMin * time.Minute).Add(-allowedVariation)
-	code, err := NewConfirmationCode()
+	code, err := NewConfirmationCode("1", "example@email.com", TypeCreateAccount, "")
 	if err != nil {
 		t.Fatalf("error cresting new confirmation code: %v", err)
 	}
