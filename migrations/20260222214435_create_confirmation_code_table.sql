@@ -15,3 +15,4 @@ CREATE TABLE confirmation_codes (
 
 -- +goose Down
 DROP TABLE confirmation_codes;
+DROP TYPE code_type;
