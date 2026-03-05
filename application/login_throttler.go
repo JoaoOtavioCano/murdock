@@ -51,7 +51,7 @@ func (lt *LoginThrottler) HandleLoginFailure(usrID string) error {
 	lt.mx.Unlock()
 
 	if usrAttemps.n >= lockoutThreshold {
-		if err := lt.db.LockUser(usrID); err != nil {
+		if err := lt.db.LockUser(usrID, nil); err != nil {
 			return err
 		}
 		return customErr.UserExceededMaxNumOfAttemptsError{}

@@ -146,6 +146,37 @@ func (s *HTTPServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 	s.successResponse(w, nil, http.StatusCreated)
 }
 
+func (s *HTTPServer) confirmationCodeValidationHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	validatioReq := &struct {
+		DigitalAddr string `json:"digitalAddr"`
+		Code        string `json:"code"`
+	}{
+		DigitalAddr: "",
+		Code:        "",
+	}
+
+	if err = json.Unmarshal(body, validatioReq); err != nil {
+		log.Println("[Error JSON unmarshal]" + err.Error())
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.authService.ConfirmationCodeValidation(validatioReq.DigitalAddr, validatioReq.Code); err != nil {
+		log.Println(err)
+		s.errorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.successResponse(w, nil, http.StatusOK)
+}
+
 func (s *HTTPServer) errorResponse(w http.ResponseWriter, msg string, statusCode int) {
 	log.Printf("[http resp] statusCode: %d - msg: %s", statusCode, msg)
 	resp, _ := json.Marshal(map[string]any{
