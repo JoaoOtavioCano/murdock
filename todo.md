@@ -19,6 +19,7 @@
 [] should an index be created for the email?
 [] cache implementation?
 [] create a event based error handling.Ex: in signup, send email fails and delete user from database fails
+[] in the createUser for EmailPasswordMethod if duplicated key validate if user is pending. if so create a new confirm code
 
 # passwords composition
 [NIST Document](https://pages.nist.gov/800-63-4/sp800-63b.html#appA)
