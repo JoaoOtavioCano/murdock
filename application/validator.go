@@ -91,7 +91,7 @@ func normalizeUnicodeString(password string) string {
 }
 
 func isInThePasswordsBlocklist(password string) (bool, error) {
-	data, err := os.ReadFile("10k-worst-passwords.txt")
+	data, err := os.ReadFile("./10k-worst-passwords.txt")
 	if err != nil {
 		return false, errors.New("[Error] unable to read file")
 	}

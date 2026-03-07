@@ -33,6 +33,7 @@ func (s *HTTPServer) Start() {
 	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler)
 
 	log.Fatal(s.server.ListenAndServe())
 }

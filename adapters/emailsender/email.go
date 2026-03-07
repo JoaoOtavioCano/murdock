@@ -46,7 +46,10 @@ func NewEmailServices() *EmailServices {
 }
 
 func (s *EmailServices) send() error {
+	log.Println("send started")
 	auth := smtp.PlainAuth("", s.auth.username, s.auth.password, s.smtpServerAddr)
+
+	log.Println("auth done")
 
 	msg := []byte(fmt.Sprintf("To: %s\r\n", s.to[0]))
 	msg = append(msg, []byte(fmt.Sprintf("Subject: %s\r\n", s.subject))...)
@@ -55,19 +58,24 @@ func (s *EmailServices) send() error {
 
 	err := smtp.SendMail(s.smtpServerAddr+":"+s.port, auth, s.from, s.to, msg)
 	if err != nil {
-		log.Println(err)
+		log.Println("[error sending mail] " + err.Error())
 		return err
 	}
+
+	log.Println("send finished")
 
 	return nil
 }
 
 func (s *EmailServices) SendConfirmationCode(address string, msg []byte, code string) error {
+	log.Println("SendConfirmationCode started")
 	tmpl, err := template.ParseFS(f, "templates/confirmationCode.html")
 	if err != nil {
 		log.Println("[parse template error] - " + err.Error())
 		return err
 	}
+
+	log.Println("got template")
 	var buf bytes.Buffer
 
 	data := struct {
@@ -80,9 +88,11 @@ func (s *EmailServices) SendConfirmationCode(address string, msg []byte, code st
 
 	err = tmpl.Execute(&buf, data)
 	if err != nil {
-		log.Println(err)
+		log.Println("[error executing template] " + err.Error())
 		return err
 	}
+
+	log.Println("template executed")
 
 	s.body = buf.String()
 
@@ -95,6 +105,8 @@ func (s *EmailServices) SendConfirmationCode(address string, msg []byte, code st
 		log.Println(err)
 		return err
 	}
+
+	log.Println("SendConfirmationCode finished")
 
 	return nil
 }

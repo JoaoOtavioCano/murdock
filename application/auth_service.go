@@ -22,12 +22,13 @@ type AuthService struct {
 	notificationServices map[outbound.NotificationType]outbound.NotificationPort
 }
 
-func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper string) *AuthService {
+func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper string, notificationServices map[outbound.NotificationType]outbound.NotificationPort) *AuthService {
 	return &AuthService{
-		database:       db,
-		loginThrottler: lt,
-		jwtSecretKey:   secKey,
-		pepper:         pepper,
+		database:             db,
+		loginThrottler:       lt,
+		jwtSecretKey:         secKey,
+		pepper:               pepper,
+		notificationServices: notificationServices,
 	}
 }
 
@@ -55,7 +56,7 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 			return nil, errors.New("invalid email and/or password")
 		case customErr.EmptyPasswordError, customErr.EmptyEmailError:
 			return nil, errors.New("missing values")
-		case customErr.UserLockedError, customErr.UserExceededMaxNumOfAttemptsError:
+		case customErr.UserLockedError, customErr.UserExceededMaxNumOfAttemptsError, customErr.AccountPendingError:
 			return nil, err
 		default:
 			return nil, errors.New("somethig went wrong")

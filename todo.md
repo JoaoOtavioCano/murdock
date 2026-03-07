@@ -11,7 +11,7 @@
 [] hash map of most common passwords?
 [] better error handling (better messages)
 [] docker setup
-[] email confirmation
+[x] email confirmation
 [] recover password
 [] blocklist should contain strings of at least 8 characters
 [] how to generate pepper

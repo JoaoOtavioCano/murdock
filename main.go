@@ -5,8 +5,10 @@ import (
 	"os"
 
 	"github.com/JoaoOtavioCano/murdock/adapters/database/postgres"
+	"github.com/JoaoOtavioCano/murdock/adapters/emailsender"
 	httpadapter "github.com/JoaoOtavioCano/murdock/adapters/httpAdapter"
 	"github.com/JoaoOtavioCano/murdock/application"
+	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 	"github.com/joho/godotenv"
 )
 
@@ -23,7 +25,7 @@ func main() {
 		log.Fatalf("Database error: %v", err)
 	}
 	lt := application.NewLoginThrottler(db)
-	authService := application.NewAuthService(db, lt, jwtSecret, pepper)
+	authService := application.NewAuthService(db, lt, jwtSecret, pepper, map[outbound.NotificationType]outbound.NotificationPort{outbound.EmailNotification: emailsender.NewEmailServices()})
 	server := httpadapter.NewHTTPServer(port, authService)
 
 	server.Start()

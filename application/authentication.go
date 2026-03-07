@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/mail"
 	"strings"
 
@@ -71,6 +72,11 @@ func (method *EmailPasswordMethod) login(db outbound.Database, lt *LoginThrottle
 	if user.Status == models.StatusLocked {
 		return nil, customErr.UserLockedError{}
 	}
+
+	if user.Status == models.StatusPending {
+		return nil, customErr.AccountPendingError{}
+	}
+
 	encryptedPassword, err := EncryptPassword(method.Password, user.Salt, method.Pepper)
 	if err != nil {
 		return nil, customErr.NotAbleToEncryptPasswordError{}
@@ -237,6 +243,8 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 		return err
 	}
 
+	log.Println(code)
+
 	if err = db.SaveConfirmationCode(code, dbTx); err != nil {
 		return err
 	}
@@ -245,6 +253,7 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 
 	msg := fmt.Sprintf("Please use the following confirmation code to complete your setup. This code will expire in %d minutes.", models.TTLInMin)
 	if err = method.emailService.SendConfirmationCode(user.Email, []byte(msg), code.GetCode()); err != nil {
+		log.Panicln("Error sending confirmation code")
 		return err
 	}
 

@@ -11,6 +11,12 @@ func (e ValidationError) Error() string {
 	return e.msg
 }
 
+type AccountPendingError struct{}
+
+func (e AccountPendingError) Error() string {
+	return "account pending verification"
+}
+
 type UserLockedError struct{}
 
 func (e UserLockedError) Error() string {
