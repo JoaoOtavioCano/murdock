@@ -2,7 +2,6 @@ package application
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -119,22 +118,22 @@ func (authSer *AuthService) Delete(r inbound.AuthReq) error {
 
 func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string) error {
 	if digitalAddr == "" || code == "" {
-		errMsg := fmt.Sprintf("values for digitalAdd and code are invalid: (digitalAdd=%s, code=%s)", digitalAddr, code)
+		errMsg := "digitalAddr and code cannot be empty strings"
 		log.Println(errMsg)
 		return errors.New(errMsg)
 	}
 
 	tx, err := authSer.database.BeginTx()
 	if err != nil {
-		log.Println(err.Error())
-		return err
+		log.Println(err)
+		return customErr.SomethingWentWrongError{}
 	}
 	defer tx.Rollback()
 
 	cc, err := authSer.database.GetConfirmationCode(code, digitalAddr, tx)
 	if err != nil {
-		log.Println(err.Error())
-		return err
+		log.Println(err)
+		return customErr.SomethingWentWrongError{}
 	}
 
 	now := time.Now()
@@ -145,21 +144,32 @@ func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string)
 
 	switch cc.GetCodeType() {
 	case models.TypeUpdateEmail:
-		authSer.database.UpdateUserEmail(cc.GetUserId(), cc.GetData(), tx)
+		if err = authSer.database.UpdateUserEmail(cc.GetUserId(), cc.GetData(), tx); err != nil {
+			log.Println(err)
+			return customErr.SomethingWentWrongError{}
+		}
+
 	case models.TypeCreateAccount:
-		authSer.database.ActivateUser(cc.GetUserId(), tx)
+		if err = authSer.database.ActivateUser(cc.GetUserId(), tx); err != nil {
+			log.Println(err)
+			return customErr.SomethingWentWrongError{}
+		}
 	case models.TypeUpdatePassword:
-		authSer.database.UpdateUserPassword(cc.GetUserId(), cc.GetData(), tx)
+		if err = authSer.database.UpdateUserPassword(cc.GetUserId(), cc.GetData(), tx); err != nil {
+			log.Println(err)
+			return customErr.SomethingWentWrongError{}
+		}
 	}
 
 	if err = authSer.database.DeleteConfirmationCode(code, digitalAddr, tx); err != nil {
-		log.Println(err.Error())
-		return err
+		log.Println(err)
+		return customErr.SomethingWentWrongError{}
 	}
 
 	if err = tx.Commit(); err != nil {
 		if err = tx.Commit(); err != nil {
-			return err
+			log.Println(err)
+			return customErr.SomethingWentWrongError{}
 		}
 	}
 

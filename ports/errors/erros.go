@@ -6,7 +6,7 @@ type ValidationError struct {
 
 func (e ValidationError) Error() string {
 	if e.msg == "" {
-		e.msg = "validatio error"
+		e.msg = "validation error"
 	}
 	return e.msg
 }
@@ -81,4 +81,10 @@ type ConfirmationCodeExpiredError struct{}
 
 func (e ConfirmationCodeExpiredError) Error() string {
 	return "code expired"
+}
+
+type SomethingWentWrongError struct{}
+
+func (e SomethingWentWrongError) Error() string {
+	return "somethig went wrong"
 }
