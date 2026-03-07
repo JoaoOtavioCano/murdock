@@ -88,3 +88,9 @@ type SomethingWentWrongError struct{}
 func (e SomethingWentWrongError) Error() string {
 	return "somethig went wrong"
 }
+
+type AuthMethodNotFoundError struct{}
+
+func (e AuthMethodNotFoundError) Error() string {
+	return "authentication method not found"
+}

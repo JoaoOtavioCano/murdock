@@ -38,7 +38,7 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
 		authMethod.parseAuthReq(r)
 	default:
-		return nil, errors.New("authentication method not found")
+		return nil, customErr.AuthMethodNotFoundError{}
 	}
 
 	var jwt []byte
@@ -58,7 +58,7 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 		case customErr.UserLockedError, customErr.UserExceededMaxNumOfAttemptsError, customErr.AccountPendingError:
 			return nil, err
 		default:
-			return nil, errors.New("somethig went wrong")
+			return nil, customErr.SomethingWentWrongError{}
 		}
 	}
 
@@ -72,18 +72,18 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	case "EmailPasswordMethod":
 		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
 	default:
-		return errors.New("authentication method not found")
+		return customErr.AuthMethodNotFoundError{}
 	}
 
 	if token == "" {
 		err := errors.New("token not found")
-		log.Println(err.Error())
+		log.Println(err)
 		return err
 	}
 	authenticated, err := authMethod.authenticate([]byte(token))
 	if err != nil {
 		log.Println(err)
-		return errors.New("somethig went wrong")
+		return customErr.SomethingWentWrongError{}
 	}
 
 	if !authenticated {
@@ -100,7 +100,7 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification])
 		authMethod.parseAuthReq(r)
 	default:
-		return errors.New("authentication method not found")
+		return customErr.AuthMethodNotFoundError{}
 	}
 
 	idGenerator := &UUIDv7Generator{}
