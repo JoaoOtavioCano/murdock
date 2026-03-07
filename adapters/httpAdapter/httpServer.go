@@ -34,6 +34,7 @@ func (s *HTTPServer) Start() {
 	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/change-password", s.changePasswordHandler)
 
 	log.Fatal(s.server.ListenAndServe())
 }
@@ -176,6 +177,35 @@ func (s *HTTPServer) confirmationCodeValidationHandler(w http.ResponseWriter, r 
 	}
 
 	s.successResponse(w, nil, http.StatusOK)
+}
+
+func (s *HTTPServer) changePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	authReq := &inbound.AuthReq{}
+
+	if err = json.Unmarshal(body, authReq); err != nil {
+		log.Println("[Error JSON unmarshal]" + err.Error())
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.authService.ChangePasswordRequest(*authReq); err != nil {
+		log.Println(err)
+		s.errorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respBody, err := json.Marshal(map[string]string{"message": "confirmation code sent to email address"})
+	if err != nil {
+		respBody = []byte{}
+	}
+	s.successResponse(w, respBody, http.StatusOK)
 }
 
 func (s *HTTPServer) errorResponse(w http.ResponseWriter, msg string, statusCode int) {

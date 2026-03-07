@@ -175,3 +175,20 @@ func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string)
 
 	return nil
 }
+
+func (authSer *AuthService) ChangePasswordRequest(r inbound.AuthReq) error {
+	authMethod := newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification])
+	authMethod.parseAuthReq(r)
+	log.Println(authMethod)
+
+	err := authMethod.changePasswordRequest(authSer.database)
+	if err != nil {
+		log.Println(err)
+		if _, ok := err.(customErr.UserNotFoundError); ok {
+			return nil
+		}
+		return customErr.SomethingWentWrongError{}
+	}
+
+	return nil
+}

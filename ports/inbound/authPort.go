@@ -6,6 +6,7 @@ type AuthPort interface {
 	Check(r AuthReq) error
 	Delete(r AuthReq) error
 	ConfirmationCodeValidation(digitalAdd, code string) error
+	ChangePasswordRequest(r AuthReq) error
 }
 
 type AuthReq struct {

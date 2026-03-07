@@ -248,7 +248,7 @@ func (db *Database) UpdateUserEmail(id, email string, tx outbound.Transaction) e
 	return nil
 }
 
-func (db *Database) UpdateUserPassword(id, password string, tx outbound.Transaction) error {
+func (db *Database) UpdateUserPassword(id, encryptedPassword string, tx outbound.Transaction) error {
 	var err error
 	fullControl := true
 	if tx == nil {
@@ -262,7 +262,7 @@ func (db *Database) UpdateUserPassword(id, password string, tx outbound.Transact
 
 	query := `UPDATE users SET encryptedPassword=$1 WHERE id=$2`
 
-	if _, err := tx.Exec(query, password, id); err != nil {
+	if _, err := tx.Exec(query, encryptedPassword, id); err != nil {
 		return fmt.Errorf("[DATABASE ERROR] %s", err.Error())
 	}
 

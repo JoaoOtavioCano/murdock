@@ -7,7 +7,7 @@ CREATE TABLE confirmation_codes (
 	userID UUID NOT NULL,
 	digitalAddr VARCHAR(50) NOT NULL,
 	codeType code_type NOT NULL,
-	data VARCHAR(50),
+	data VARCHAR(64),
 
     FOREIGN KEY (userID) REFERENCES users (id),
     PRIMARY KEY (code, digitalAddr)

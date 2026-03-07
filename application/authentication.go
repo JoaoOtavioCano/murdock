@@ -66,6 +66,9 @@ func (method *EmailPasswordMethod) validateCredentials() error {
 func (method *EmailPasswordMethod) login(db outbound.Database, lt *LoginThrottler) ([]byte, error) {
 	user, err := db.GetUserByEmailInDB(method.Email, nil)
 	if err != nil {
+		return nil, err
+	}
+	if user.Id == "" {
 		return nil, customErr.UserNotFoundError{}
 	}
 
@@ -250,6 +253,46 @@ func (method *EmailPasswordMethod) createUser(idGenerator idGenerator, db outbou
 	dbTx.Commit()
 
 	msg := fmt.Sprintf("Please use the following confirmation code to complete your setup. This code will expire in %d minutes.", models.TTLInMin)
+	if err = method.emailService.SendConfirmationCode(user.Email, []byte(msg), code.GetCode()); err != nil {
+		log.Println("Error sending confirmation code")
+		return err
+	}
+
+	return nil
+}
+
+func (method *EmailPasswordMethod) changePasswordRequest(db outbound.Database) error {
+	dbTx, err := db.BeginTx()
+	if err != nil {
+		return err
+	}
+	defer dbTx.Rollback()
+
+	user, err := db.GetUserByEmailInDB(method.Email, dbTx)
+	if err != nil {
+		return err
+	}
+	if user.Id == "" {
+		return customErr.UserNotFoundError{}
+	}
+
+	newEncryptedPassword, err := EncryptPassword(method.Password, user.Salt, method.Pepper)
+	if err != nil {
+		return err
+	}
+
+	code, err := models.NewConfirmationCode(user.Id, user.Email, models.TypeUpdatePassword, newEncryptedPassword)
+	if err != nil {
+		return err
+	}
+
+	if err = db.SaveConfirmationCode(code, dbTx); err != nil {
+		return err
+	}
+
+	dbTx.Commit()
+
+	msg := fmt.Sprintf("Please use the following confirmation code to change you password. This code will expire in %d minutes.", models.TTLInMin)
 	if err = method.emailService.SendConfirmationCode(user.Email, []byte(msg), code.GetCode()); err != nil {
 		log.Println("Error sending confirmation code")
 		return err
