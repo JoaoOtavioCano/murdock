@@ -26,7 +26,7 @@ func TestIsTheCorrectPasswordFail(t *testing.T) {
 }
 
 func TestEncryptPassword(t *testing.T) {
-	password := "1234"
+	password := "password"
 	pepper := os.Getenv("PEPPER")
 	salt := "0987654321"
 	_, err := EncryptPassword(password, salt, pepper)

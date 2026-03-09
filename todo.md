@@ -12,7 +12,7 @@
 [] better error handling (better messages)
 [] docker setup
 [x] email confirmation
-[] recover password
+[x] recover password
 [] blocklist should contain strings of at least 8 characters
 [] how to generate pepper
 [] evaluate salt and encrypted password hex encoding length
