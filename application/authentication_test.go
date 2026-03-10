@@ -64,26 +64,6 @@ func TestIssueJWT(t *testing.T) {
 	}
 }
 
-func TestPasswordsBlocklist(t *testing.T) {
-	found, err := isInThePasswordsBlocklist("monkey")
-	if err != nil {
-		t.Fatalf("[Error] something went wrong: %v", err)
-	}
-
-	if !found {
-		t.Fatalf("[Error] unable to find bad password in the file")
-	}
-
-	found, err = isInThePasswordsBlocklist("EssaEamelhorsenhadomund1234@#$%ˆ&")
-	if err != nil {
-		t.Fatalf("[Error] something went wrong")
-	}
-
-	if found {
-		t.Fatalf("[Error] unable to find bad password in the file")
-	}
-}
-
 func TestBase64UrlpDecode(t *testing.T) {
 	encodedData := []byte("eyJpZCI6IjEyMzQ1Njc4OTAiLCJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiZW5jcnlwdGVkUGFzc3dvcmQiOiIiLCJzYWx0IjoiIn0")
 

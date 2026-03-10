@@ -174,13 +174,28 @@ func saveConfirmationCodeError(code *models.ConfirmationCode, tx outbound.Transa
 }
 
 // ==========================================================
+// Password Block List Mock
+// ==========================================================
+
+type MockPasswordBlockList struct {
+	isInPasswordsBlocklistFunc func(password string) (bool, error)
+}
+
+func (m *MockPasswordBlockList) IsInPasswordsBlocklist(password string) (bool, error) {
+	if m.isInPasswordsBlocklistFunc != nil {
+		return m.isInPasswordsBlocklistFunc(password)
+	}
+	return false, nil
+}
+
+// ==========================================================
 // Test cases
 // ==========================================================
 
 func TestCreateUserSuccess(t *testing.T) {
 	commitCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
@@ -224,7 +239,7 @@ func TestCreateUserSuccess(t *testing.T) {
 func TestCreateUserReturnsUserAlreadyExistsErrorWhenDBDuplicateKeyErrorHappens(t *testing.T) {
 	rollbackCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
@@ -272,7 +287,7 @@ func TestCreateUserReturnsUserAlreadyExistsErrorWhenDBDuplicateKeyErrorHappens(t
 func TestCreateUserReturnsErrorWhenEmailIsInvalid(t *testing.T) {
 	rollbackCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
@@ -320,7 +335,7 @@ func TestCreateUserReturnsErrorWhenEmailIsInvalid(t *testing.T) {
 func TestCreateUserReturnsErrorWhenPasswordIsTooShort(t *testing.T) {
 	rollbackCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
@@ -367,7 +382,7 @@ func TestCreateUserReturnsErrorWhenPasswordIsTooShort(t *testing.T) {
 func TestCreateUserReturnsGenericDBError(t *testing.T) {
 	rollbackCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
@@ -416,7 +431,7 @@ func TestCreateUserReturnsGenericDBError(t *testing.T) {
 func TestCreateUserReturnsErrorWhenSaveConfirmationCodeFails(t *testing.T) {
 	rollbackCalled := false
 	method := &EmailPasswordMethod{
-		Validator: newDefaultValidator(),
+		Validator: newDefaultValidator(&MockPasswordBlockList{}),
 		Pepper:    "pepper",
 		jwtSecret: "secKey",
 		emailService: &MockEmailService{
