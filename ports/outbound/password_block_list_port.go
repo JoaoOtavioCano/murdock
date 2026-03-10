@@ -1,5 +1,5 @@
 package outbound
 
 type PasswordBlockListPort interface {
-	isInPasswordsBlocklist(password string) (bool, error)
+	IsInPasswordsBlocklist(password string) (bool, error)
 }

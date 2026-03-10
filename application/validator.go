@@ -1,12 +1,10 @@
 package application
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"os"
 
 	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
+	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -16,12 +14,18 @@ type Validator interface {
 }
 
 type (
-	NISTSingleFactorPassworsValidator struct{}
-	NISTMultiFactorPassworsValidator  struct{}
+	NISTSingleFactorPassworsValidator struct {
+		blockList outbound.PasswordBlockListPort
+	}
+	NISTMultiFactorPassworsValidator struct {
+		blockList outbound.PasswordBlockListPort
+	}
 )
 
-func newDefaultValidator() *NISTSingleFactorPassworsValidator {
-	return new(NISTSingleFactorPassworsValidator)
+func newDefaultValidator(blockList outbound.PasswordBlockListPort) *NISTSingleFactorPassworsValidator {
+	return &NISTSingleFactorPassworsValidator{
+		blockList: blockList,
+	}
 }
 
 // Requirements:
@@ -43,7 +47,7 @@ func (v *NISTSingleFactorPassworsValidator) validatePassword(password *string) e
 
 	*password = normalizeUnicodeString(*password)
 
-	found, err := isInThePasswordsBlocklist(*password)
+	found, err := v.blockList.IsInPasswordsBlocklist(*password)
 	if err != nil {
 		return err
 	}
@@ -61,7 +65,7 @@ func (v *NISTSingleFactorPassworsValidator) validatePassword(password *string) e
 // Verifiers SHOULD accept Unicode [ISO/ISC 10646] characters in passwords. Each Unicode code point SHALL be counted as a single character when evaluating password length.
 // Verifiers SHALL NOT impose other composition rules (e.g., requiring mixtures of different character types) for passwords.
 // If Unicode characters are accepted in passwords, the verifier SHOULD apply the normalization process for stabilized strings using the Normalization Form Canonical Composition (NFC)
-func (NISTMultiFactorPassworsValidator) validatePassword(password *string) error {
+func (v *NISTMultiFactorPassworsValidator) validatePassword(password *string) error {
 	minLen := 8
 	maxLen := 128
 
@@ -74,7 +78,7 @@ func (NISTMultiFactorPassworsValidator) validatePassword(password *string) error
 
 	*password = normalizeUnicodeString(*password)
 
-	found, err := isInThePasswordsBlocklist(*password)
+	found, err := v.blockList.IsInPasswordsBlocklist(*password)
 	if err != nil {
 		return err
 	}
@@ -88,13 +92,4 @@ func (NISTMultiFactorPassworsValidator) validatePassword(password *string) error
 
 func normalizeUnicodeString(password string) string {
 	return norm.NFC.String(password)
-}
-
-func isInThePasswordsBlocklist(password string) (bool, error) {
-	data, err := os.ReadFile("./10k-worst-passwords.txt")
-	if err != nil {
-		return false, errors.New("[Error] unable to read file")
-	}
-
-	return bytes.Contains(data, []byte(password)), nil
 }

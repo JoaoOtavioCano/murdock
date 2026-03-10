@@ -19,15 +19,17 @@ type AuthService struct {
 	loginThrottler       *LoginThrottler
 	pepper               string
 	notificationServices map[outbound.NotificationType]outbound.NotificationPort
+	blockList            outbound.PasswordBlockListPort
 }
 
-func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper string, notificationServices map[outbound.NotificationType]outbound.NotificationPort) *AuthService {
+func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper string, notificationServices map[outbound.NotificationType]outbound.NotificationPort, blockList outbound.PasswordBlockListPort) *AuthService {
 	return &AuthService{
 		database:             db,
 		loginThrottler:       lt,
 		jwtSecretKey:         secKey,
 		pepper:               pepper,
 		notificationServices: notificationServices,
+		blockList:            blockList,
 	}
 }
 
@@ -35,7 +37,7 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil, authSer.blockList)
 		authMethod.parseAuthReq(r)
 	default:
 		return nil, customErr.AuthMethodNotFoundError{}
@@ -70,7 +72,7 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil)
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil, authSer.blockList)
 	default:
 		return customErr.AuthMethodNotFoundError{}
 	}
@@ -97,7 +99,7 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 	var authMethod authMethod
 	switch r.Method {
 	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification])
+		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification], authSer.blockList)
 		authMethod.parseAuthReq(r)
 	default:
 		return customErr.AuthMethodNotFoundError{}
@@ -177,7 +179,7 @@ func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string)
 }
 
 func (authSer *AuthService) ChangePasswordRequest(r inbound.AuthReq) error {
-	authMethod := newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification])
+	authMethod := newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification], authSer.blockList)
 	authMethod.parseAuthReq(r)
 	log.Println(authMethod)
 

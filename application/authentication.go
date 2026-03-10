@@ -37,9 +37,9 @@ type EmailPasswordMethod struct {
 	emailService outbound.NotificationPort `json:"-"`
 }
 
-func newEmailPasswordMethod(pepper, secKey string, emailService outbound.NotificationPort) *EmailPasswordMethod {
+func newEmailPasswordMethod(pepper, secKey string, emailService outbound.NotificationPort, blockList outbound.PasswordBlockListPort) *EmailPasswordMethod {
 	return &EmailPasswordMethod{
-		Validator:    newDefaultValidator(),
+		Validator:    newDefaultValidator(blockList),
 		Pepper:       pepper,
 		jwtSecret:    secKey,
 		emailService: emailService,

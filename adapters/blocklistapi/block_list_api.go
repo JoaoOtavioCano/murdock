@@ -23,7 +23,7 @@ func NewHaveIBeenPwnedAPIClient() *HaveIBeenPwnedAPIClient {
 	}
 }
 
-func (c *HaveIBeenPwnedAPIClient) isInPasswordsBlocklist(password string) (bool, error) {
+func (c *HaveIBeenPwnedAPIClient) IsInPasswordsBlocklist(password string) (bool, error) {
 	s1 := sha1.New()
 	s1.Write([]byte(password))
 	passHash := s1.Sum(nil)

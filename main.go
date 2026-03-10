@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/JoaoOtavioCano/murdock/adapters/blocklistapi"
 	"github.com/JoaoOtavioCano/murdock/adapters/database/postgres"
 	"github.com/JoaoOtavioCano/murdock/adapters/emailsender"
 	httpadapter "github.com/JoaoOtavioCano/murdock/adapters/httpAdapter"
@@ -25,7 +26,8 @@ func main() {
 		log.Fatalf("Database error: %v", err)
 	}
 	lt := application.NewLoginThrottler(db)
-	authService := application.NewAuthService(db, lt, jwtSecret, pepper, map[outbound.NotificationType]outbound.NotificationPort{outbound.EmailNotification: emailsender.NewEmailServices()})
+	blockList := blocklistapi.NewHaveIBeenPwnedAPIClient()
+	authService := application.NewAuthService(db, lt, jwtSecret, pepper, map[outbound.NotificationType]outbound.NotificationPort{outbound.EmailNotification: emailsender.NewEmailServices()}, blockList)
 	server := httpadapter.NewHTTPServer(port, authService)
 
 	server.Start()

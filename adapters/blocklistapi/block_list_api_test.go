@@ -6,7 +6,7 @@ import (
 
 func TestIsInPasswordsBlocklist(t *testing.T) {
 	client := NewHaveIBeenPwnedAPIClient()
-	is, err := client.isInPasswordsBlocklist("password")
+	is, err := client.IsInPasswordsBlocklist("password")
 	if err != nil {
 		t.Error(err.Error())
 	}
