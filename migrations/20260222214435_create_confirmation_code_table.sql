@@ -9,7 +9,7 @@ CREATE TABLE confirmation_codes (
 	codeType code_type NOT NULL,
 	data VARCHAR(64),
 
-    FOREIGN KEY (userID) REFERENCES users (id),
+    FOREIGN KEY (userID) REFERENCES users (id) ON DELETE CASCADE,
     PRIMARY KEY (code, digitalAddr)
 );
 

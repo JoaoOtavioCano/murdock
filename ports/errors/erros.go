@@ -94,3 +94,15 @@ type AuthMethodNotFoundError struct{}
 func (e AuthMethodNotFoundError) Error() string {
 	return "authentication method not found"
 }
+
+type InvalidTokeError struct{}
+
+func (e InvalidTokeError) Error() string {
+	return "invalid token"
+}
+
+type NoTokenReceivedError struct{}
+
+func (e NoTokenReceivedError) Error() string {
+	return "no token received"
+}

@@ -71,7 +71,6 @@ func TestBase64UrlpDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("[Error] unable to decode data")
 	}
-	decodedData = decodedData[:len(decodedData)-1]
 
 	if !bytes.Equal(decodedData, []byte(`{"id":"1234567890","email":"test@email.com","encryptedPassword":"","salt":""}`)) {
 		t.Fatalf("[Error] data decoded incorrectly")

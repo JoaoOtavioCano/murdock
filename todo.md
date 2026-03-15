@@ -7,19 +7,17 @@
 [x] implement hexagonal architecture
 [x] increase time that the sign in takes every try needed
 [] CRUD users (missing DELETE, UPDATE, READ)
-[] embed 10k worst passwords file
-[] hash map of most common passwords?
 [] better error handling (better messages)
 [] docker setup
 [x] email confirmation
 [x] recover password
-[] blocklist should contain strings of at least 8 characters
 [] how to generate pepper
 [] evaluate salt and encrypted password hex encoding length
 [] should an index be created for the email?
 [] cache implementation?
 [] create a event based error handling.Ex: in signup, send email fails and delete user from database fails
 [] in the createUser for EmailPasswordMethod if duplicated key validate if user is pending. if so create a new confirm code
+[] use slog?
 
 # passwords composition
 [NIST Document](https://pages.nist.gov/800-63-4/sp800-63b.html#appA)

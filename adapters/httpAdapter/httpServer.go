@@ -35,6 +35,7 @@ func (s *HTTPServer) Start() {
 	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler)
 	http.DefaultServeMux.HandleFunc("POST /api/change-password", s.changePasswordHandler)
+	http.DefaultServeMux.HandleFunc("DELETE /api/delete-account", s.deleteAccountHandler)
 
 	log.Fatal(s.server.ListenAndServe())
 }
@@ -108,7 +109,7 @@ func (s *HTTPServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.authService.Check(*authReq)
 	if err != nil {
 		log.Println(err)
-		s.errorResponse(w, "somethig went wrong", http.StatusInternalServerError)
+		s.errorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -202,6 +203,45 @@ func (s *HTTPServer) changePasswordHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	respBody, err := json.Marshal(map[string]string{"message": "confirmation code sent to email address"})
+	if err != nil {
+		respBody = []byte{}
+	}
+	s.successResponse(w, respBody, http.StatusOK)
+}
+
+func (s *HTTPServer) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("[Error reading request body]" + err.Error())
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	authReq := &inbound.AuthReq{}
+
+	if err = json.Unmarshal(body, authReq); err != nil {
+		log.Println("[Error JSON unmarshal]" + err.Error())
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	if err = s.authService.Delete(*authReq); err != nil {
+		log.Println("[Error in authService.Delete] " + err.Error())
+		var statusCode int
+
+		switch err.(type) {
+		case customErr.InvalidTokeError:
+			statusCode = http.StatusUnauthorized
+		case customErr.NoTokenReceivedError, customErr.AuthMethodNotFoundError:
+			statusCode = http.StatusBadRequest
+		default:
+			statusCode = http.StatusInternalServerError
+		}
+		s.errorResponse(w, err.Error(), statusCode)
+		return
+	}
+
+	respBody, err := json.Marshal(map[string]string{"message": "account deleted"})
 	if err != nil {
 		respBody = []byte{}
 	}

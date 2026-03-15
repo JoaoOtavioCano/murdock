@@ -114,8 +114,6 @@ func (method *EmailPasswordMethod) authenticate(token []byte) (bool, error) {
 	jwtContent := []byte(string(header) + "." + string(payload))
 	expectedSignature := signJWT(jwtContent, method.jwtSecret)
 
-	signature = signature[:len(signature)-1]
-
 	return hmac.Equal(signature, expectedSignature), nil
 }
 
@@ -193,9 +191,8 @@ func base64UrlpDecode(encodedData []byte) ([]byte, error) {
 		}
 	}
 
-	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(encodedData)))
-
-	_, err := base64.StdEncoding.Decode(decodedData, encodedData)
+	decodedData := make([]byte, 0, base64.StdEncoding.DecodedLen(len(encodedData)))
+	decodedData, err := base64.StdEncoding.AppendDecode(decodedData, encodedData)
 	if err != nil {
 		return nil, errors.New("[Error] unable to decode base 64 url")
 	}

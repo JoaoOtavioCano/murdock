@@ -1,8 +1,10 @@
 package application
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/JoaoOtavioCano/murdock/application/models"
@@ -78,7 +80,7 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	}
 
 	if token == "" {
-		err := errors.New("token not found")
+		err := customErr.NoTokenReceivedError{}
 		log.Println(err)
 		return err
 	}
@@ -89,7 +91,7 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	}
 
 	if !authenticated {
-		return errors.New("invalid token")
+		return customErr.InvalidTokeError{}
 	}
 
 	return nil
@@ -115,6 +117,47 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 }
 
 func (authSer *AuthService) Delete(r inbound.AuthReq) error {
+	if err := authSer.Check(r); err != nil {
+		log.Println("[Error authSer.Check] " + err.Error())
+		return err
+	}
+
+	tx, err := authSer.database.BeginTx()
+	if err != nil {
+		log.Println("[Error database.BeginTx] " + err.Error())
+		return customErr.SomethingWentWrongError{}
+	}
+	defer tx.Rollback()
+
+	jwt := r.Data["token"]
+	jwtPayloadStart := strings.Index(jwt, ".") + 1
+	jwtPayloadEnd := strings.LastIndex(jwt, ".")
+
+	payload, err := base64UrlpDecode([]byte(jwt[jwtPayloadStart:jwtPayloadEnd]))
+	if err != nil {
+		log.Println("[Error base64UrlpDecode] " + err.Error())
+		return customErr.SomethingWentWrongError{}
+	}
+
+	usr := models.NewUser()
+	err = json.Unmarshal(payload, usr)
+	if err != nil {
+		log.Println("[Error json.Unmarshal] " + err.Error())
+		return customErr.SomethingWentWrongError{}
+	}
+
+	err = authSer.database.DeleteUserInDB(usr.Id, tx)
+	if err != nil {
+		log.Println("[Error database.DeleteUserInDB] " + err.Error())
+		return customErr.SomethingWentWrongError{}
+	}
+
+	if err = tx.Commit(); err != nil {
+		if err = tx.Commit(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -181,7 +224,6 @@ func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string)
 func (authSer *AuthService) ChangePasswordRequest(r inbound.AuthReq) error {
 	authMethod := newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification], authSer.blockList)
 	authMethod.parseAuthReq(r)
-	log.Println(authMethod)
 
 	err := authMethod.changePasswordRequest(authSer.database)
 	if err != nil {
