@@ -4,6 +4,7 @@ package httpadapter
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +12,12 @@ import (
 
 	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
 	"github.com/JoaoOtavioCano/murdock/ports/inbound"
+	"github.com/JoaoOtavioCano/murdock/ports/inbound/commands"
 	_ "github.com/lib/pq"
+)
+
+const (
+	emailPasswordMethod string = "EmailPasswordMethod"
 )
 
 type HTTPServer struct {
@@ -19,10 +25,15 @@ type HTTPServer struct {
 	authService inbound.AuthPort
 }
 
-func NewHTTPServer(port string, authService inbound.AuthPort) *HTTPServer {
+type reqTemplate struct {
+	Method string            `json:"method"`
+	Data   map[string]string `json:"data"`
+}
+
+func NewHTTPServer(host, port string, authService inbound.AuthPort) *HTTPServer {
 	return &HTTPServer{
 		server: &http.Server{
-			Addr:                         port,
+			Addr:                         fmt.Sprintf("%s:%s", host, port),
 			DisableGeneralOptionsHandler: false,
 		},
 		authService: authService,
@@ -30,13 +41,14 @@ func NewHTTPServer(port string, authService inbound.AuthPort) *HTTPServer {
 }
 
 func (s *HTTPServer) Start() {
-	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler)
-	http.DefaultServeMux.HandleFunc("POST /api/change-password", s.changePasswordHandler)
-	http.DefaultServeMux.HandleFunc("DELETE /api/delete-account", s.deleteAccountHandler)
+	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)                            // POST   /v1/sessions
+	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)                               // POST   /v1/sessions/status
+	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)                            // POST   /v1/users
+	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler) // POST   /v1/code/validate
+	http.DefaultServeMux.HandleFunc("POST /api/change-password", s.changePasswordHandler)           // PUT    /v1/users/password
+	http.DefaultServeMux.HandleFunc("DELETE /api/delete-account", s.deleteAccountHandler)           // DELETE /v1/users
 
+	log.Printf("startign http server in %s\n", s.server.Addr)
 	log.Fatal(s.server.ListenAndServe())
 }
 
@@ -48,15 +60,24 @@ func (s *HTTPServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authReq := &inbound.AuthReq{}
+	req := &reqTemplate{}
 
-	if err = json.Unmarshal(body, authReq); err != nil {
+	if err = json.Unmarshal(body, req); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
 		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	token, err := s.authService.Login(*authReq)
+	var cmd commands.LoginCmd
+	switch req.Method {
+	case emailPasswordMethod:
+		cmd = commands.LoginCmdEmailPasswordMethod{
+			Email:    req.Data["email"],
+			Password: req.Data["password"],
+		}
+	}
+
+	token, err := s.authService.Login(cmd)
 	if err != nil {
 		var statusCode int
 		switch err.Error() {
@@ -71,7 +92,6 @@ func (s *HTTPServer) signinHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			statusCode = http.StatusInternalServerError
 		}
-		log.Printf("[http resp] statusCode: %d - body: %s", statusCode, err.Error())
 		s.errorResponse(w, err.Error(), statusCode)
 		return
 	}
@@ -98,15 +118,17 @@ func (s *HTTPServer) checkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authReq := &inbound.AuthReq{}
+	req := &reqTemplate{}
 
-	if err = json.Unmarshal(body, authReq); err != nil {
+	if err = json.Unmarshal(body, req); err != nil {
 		log.Println(err)
 		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	err = s.authService.Check(*authReq)
+	cmd := commands.NewCheckSessionStatusCmdEmailPasswordMethod(req.Data["token"])
+
+	err = s.authService.CheckSessionStatus(cmd)
 	if err != nil {
 		log.Println(err)
 		s.errorResponse(w, err.Error(), http.StatusInternalServerError)
@@ -124,15 +146,24 @@ func (s *HTTPServer) signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authReq := &inbound.AuthReq{}
+	req := &reqTemplate{}
 
-	if err = json.Unmarshal(body, authReq); err != nil {
+	if err = json.Unmarshal(body, req); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
 		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	if err := s.authService.Signup(*authReq); err != nil {
+	var cmd commands.SignupCmd
+	switch req.Method {
+	case emailPasswordMethod:
+		cmd = commands.SignupCmdEmailPasswordMethod{
+			Email:    req.Data["email"],
+			Password: req.Data["password"],
+		}
+	}
+
+	if err := s.authService.Signup(cmd); err != nil {
 		log.Println(err)
 		var statusCode int
 		switch err.(type) {
@@ -188,16 +219,23 @@ func (s *HTTPServer) changePasswordHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	authReq := &inbound.AuthReq{}
+	req := &struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{}
 
-	if err = json.Unmarshal(body, authReq); err != nil {
+	if err = json.Unmarshal(body, req); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
 		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	if err := s.authService.ChangePasswordRequest(*authReq); err != nil {
-		log.Println(err)
+	cmd := commands.ChangePasswordRequestCmdEmailPasswordMethod{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	if err := s.authService.ChangePasswordRequest(cmd); err != nil {
 		s.errorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -217,16 +255,21 @@ func (s *HTTPServer) deleteAccountHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	authReq := &inbound.AuthReq{}
+	req := &reqTemplate{}
 
-	if err = json.Unmarshal(body, authReq); err != nil {
+	if err = json.Unmarshal(body, req); err != nil {
 		log.Println("[Error JSON unmarshal]" + err.Error())
 		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	if err = s.authService.Delete(*authReq); err != nil {
-		log.Println("[Error in authService.Delete] " + err.Error())
+	var cmd commands.DeleteCmd
+	switch req.Method {
+	case emailPasswordMethod:
+		cmd = commands.NewDeleteCmdEmailPasswordMethod(req.Data["token"])
+	}
+
+	if err = s.authService.Delete(cmd); err != nil {
 		var statusCode int
 
 		switch err.(type) {
@@ -255,11 +298,16 @@ func (s *HTTPServer) errorResponse(w http.ResponseWriter, msg string, statusCode
 			"message": msg,
 		},
 	})
-	http.Error(w, string(resp), statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if _, err := w.Write(resp); err != nil {
+		s.errorResponse(w, "something went wrong", http.StatusInternalServerError)
+	}
 }
 
 func (s *HTTPServer) successResponse(w http.ResponseWriter, body []byte, statusCode int) {
 	log.Printf("[http resp] statusCode: %d - body: %s", statusCode, string(body))
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if body != nil {
 		if _, err := w.Write(body); err != nil {

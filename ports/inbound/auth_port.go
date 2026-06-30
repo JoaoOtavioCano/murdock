@@ -1,15 +1,12 @@
 package inbound
 
-type AuthPort interface {
-	Signup(r AuthReq) error
-	Login(r AuthReq) ([]byte, error)
-	Check(r AuthReq) error
-	Delete(r AuthReq) error
-	ConfirmationCodeValidation(digitalAdd, code string) error
-	ChangePasswordRequest(r AuthReq) error
-}
+import "github.com/JoaoOtavioCano/murdock/ports/inbound/commands"
 
-type AuthReq struct {
-	Method string            `json:"method"`
-	Data   map[string]string `json:"data"`
+type AuthPort interface {
+	Signup(cmd commands.SignupCmd) error
+	Login(cmd commands.LoginCmd) ([]byte, error)
+	CheckSessionStatus(cmd commands.CheckSessionStatusCmd) error
+	Delete(cmd commands.DeleteCmd) error
+	ConfirmationCodeValidation(digitalAdd, code string) error
+	ChangePasswordRequest(cmd commands.ChangePasswordRequestCmdEmailPasswordMethod) error
 }

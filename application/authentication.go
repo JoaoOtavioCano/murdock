@@ -16,7 +16,6 @@ import (
 
 	"github.com/JoaoOtavioCano/murdock/application/models"
 	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
-	"github.com/JoaoOtavioCano/murdock/ports/inbound"
 	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 )
 
@@ -25,7 +24,6 @@ type authMethod interface {
 	login(db outbound.Database, lt *LoginThrottler) ([]byte, error)
 	createUser(idGenerator idGenerator, db outbound.Database) error
 	authenticate(token []byte) (bool, error)
-	parseAuthReq(inbound.AuthReq)
 }
 
 type EmailPasswordMethod struct {
@@ -37,18 +35,23 @@ type EmailPasswordMethod struct {
 	emailService outbound.NotificationPort `json:"-"`
 }
 
-func newEmailPasswordMethod(pepper, secKey string, emailService outbound.NotificationPort, blockList outbound.PasswordBlockListPort) *EmailPasswordMethod {
+func newEmailPasswordMethod(pepper, secKey string, emailService outbound.NotificationPort, blockList outbound.PasswordBlockListPort, email, password *string) *EmailPasswordMethod {
+	emailStr := ""
+	passwordStr := ""
+	if email != nil {
+		emailStr = *email
+	}
+	if password != nil {
+		passwordStr = *password
+	}
 	return &EmailPasswordMethod{
 		Validator:    newDefaultValidator(blockList),
 		Pepper:       pepper,
 		jwtSecret:    secKey,
 		emailService: emailService,
+		Email:        emailStr,
+		Password:     passwordStr,
 	}
-}
-
-func (method *EmailPasswordMethod) parseAuthReq(r inbound.AuthReq) {
-	method.Email = r.Data["email"]
-	method.Password = r.Data["password"]
 }
 
 func (method *EmailPasswordMethod) validateCredentials() error {
@@ -271,6 +274,11 @@ func (method *EmailPasswordMethod) changePasswordRequest(db outbound.Database) e
 	}
 	if user.Id == "" {
 		return customErr.UserNotFoundError{}
+	}
+
+	err = method.Validator.validatePassword(&method.Password)
+	if err != nil {
+		return customErr.FoundInBlocklistError{}
 	}
 
 	newEncryptedPassword, err := EncryptPassword(method.Password, user.Salt, method.Pepper)

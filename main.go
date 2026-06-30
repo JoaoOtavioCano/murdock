@@ -19,6 +19,7 @@ func main() {
 	}
 	pepper := os.Getenv("PEPPER")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	host := os.Getenv("HOST")
 	port := os.Getenv("PORT")
 
 	db, err := postgres.NewDatabase()
@@ -27,8 +28,14 @@ func main() {
 	}
 	lt := application.NewLoginThrottler(db)
 	blockList := blocklistapi.NewHaveIBeenPwnedAPIClient()
-	authService := application.NewAuthService(db, lt, jwtSecret, pepper, map[outbound.NotificationType]outbound.NotificationPort{outbound.EmailNotification: emailsender.NewEmailServices()}, blockList)
-	server := httpadapter.NewHTTPServer(port, authService)
+	authService := application.NewAuthService(
+		db,
+		lt,
+		jwtSecret,
+		pepper, map[outbound.NotificationType]outbound.NotificationPort{outbound.EmailNotification: emailsender.NewEmailServices()},
+		blockList,
+	)
+	server := httpadapter.NewHTTPServer(host, port, authService)
 
 	server.Start()
 }

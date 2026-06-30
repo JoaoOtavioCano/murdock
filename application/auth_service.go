@@ -9,7 +9,7 @@ import (
 
 	"github.com/JoaoOtavioCano/murdock/application/models"
 	customErr "github.com/JoaoOtavioCano/murdock/ports/errors"
-	"github.com/JoaoOtavioCano/murdock/ports/inbound"
+	"github.com/JoaoOtavioCano/murdock/ports/inbound/commands"
 	"github.com/JoaoOtavioCano/murdock/ports/outbound"
 
 	_ "github.com/lib/pq"
@@ -35,23 +35,30 @@ func NewAuthService(db outbound.Database, lt *LoginThrottler, secKey, pepper str
 	}
 }
 
-func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
+func (authSer *AuthService) Login(cmd commands.LoginCmd) ([]byte, error) {
 	var authMethod authMethod
-	switch r.Method {
-	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil, authSer.blockList)
-		authMethod.parseAuthReq(r)
+	switch aux := cmd.(type) {
+	case commands.LoginCmdEmailPasswordMethod:
+		authMethod = newEmailPasswordMethod(
+			authSer.pepper,
+			authSer.jwtSecretKey,
+			nil,
+			authSer.blockList,
+			&aux.Email,
+			&aux.Password,
+		)
 	default:
 		return nil, customErr.AuthMethodNotFoundError{}
 	}
 
 	var jwt []byte
-	err := authMethod.validateCredentials()
+	// err := authMethod.validateCredentials()
 
-	if err == nil {
-		jwt, err = authMethod.login(authSer.database, authSer.loginThrottler)
-	}
+	// if err == nil {
+	// 	jwt, err = authMethod.login(authSer.database, authSer.loginThrottler)
+	// }
 
+	jwt, err := authMethod.login(authSer.database, authSer.loginThrottler)
 	if err != nil {
 		log.Println(err.Error())
 		switch err.(type) {
@@ -69,12 +76,19 @@ func (authSer *AuthService) Login(r inbound.AuthReq) ([]byte, error) {
 	return jwt, nil
 }
 
-func (authSer *AuthService) Check(r inbound.AuthReq) error {
-	token := r.Data["token"]
+func (authSer *AuthService) CheckSessionStatus(cmd commands.CheckSessionStatusCmd) error {
+	token := cmd.GetToken()
 	var authMethod authMethod
-	switch r.Method {
-	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, nil, authSer.blockList)
+	switch cmd.(type) {
+	case commands.CheckSessionStatusCmdEmailPasswordMethod:
+		authMethod = newEmailPasswordMethod(
+			authSer.pepper,
+			authSer.jwtSecretKey,
+			nil,
+			authSer.blockList,
+			nil,
+			nil,
+		)
 	default:
 		return customErr.AuthMethodNotFoundError{}
 	}
@@ -97,12 +111,18 @@ func (authSer *AuthService) Check(r inbound.AuthReq) error {
 	return nil
 }
 
-func (authSer *AuthService) Signup(r inbound.AuthReq) error {
+func (authSer *AuthService) Signup(cmd commands.SignupCmd) error {
 	var authMethod authMethod
-	switch r.Method {
-	case "EmailPasswordMethod":
-		authMethod = newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification], authSer.blockList)
-		authMethod.parseAuthReq(r)
+	switch aux := cmd.(type) {
+	case commands.SignupCmdEmailPasswordMethod:
+		authMethod = newEmailPasswordMethod(
+			authSer.pepper,
+			authSer.jwtSecretKey,
+			authSer.notificationServices[outbound.EmailNotification],
+			authSer.blockList,
+			&aux.Email,
+			&aux.Password,
+		)
 	default:
 		return customErr.AuthMethodNotFoundError{}
 	}
@@ -116,8 +136,8 @@ func (authSer *AuthService) Signup(r inbound.AuthReq) error {
 	return nil
 }
 
-func (authSer *AuthService) Delete(r inbound.AuthReq) error {
-	if err := authSer.Check(r); err != nil {
+func (authSer *AuthService) Delete(cmd commands.DeleteCmd) error {
+	if err := authSer.CheckSessionStatus(cmd.ToCheckSessionStatusCmd()); err != nil {
 		log.Println("[Error authSer.Check] " + err.Error())
 		return err
 	}
@@ -129,7 +149,7 @@ func (authSer *AuthService) Delete(r inbound.AuthReq) error {
 	}
 	defer tx.Rollback()
 
-	jwt := r.Data["token"]
+	jwt := cmd.GetToken()
 	jwtPayloadStart := strings.Index(jwt, ".") + 1
 	jwtPayloadEnd := strings.LastIndex(jwt, ".")
 
@@ -221,17 +241,27 @@ func (authSer *AuthService) ConfirmationCodeValidation(digitalAddr, code string)
 	return nil
 }
 
-func (authSer *AuthService) ChangePasswordRequest(r inbound.AuthReq) error {
-	authMethod := newEmailPasswordMethod(authSer.pepper, authSer.jwtSecretKey, authSer.notificationServices[outbound.EmailNotification], authSer.blockList)
-	authMethod.parseAuthReq(r)
+func (authSer *AuthService) ChangePasswordRequest(cmd commands.ChangePasswordRequestCmdEmailPasswordMethod) error {
+	authMethod := newEmailPasswordMethod(
+		authSer.pepper,
+		authSer.jwtSecretKey,
+		authSer.notificationServices[outbound.EmailNotification],
+		authSer.blockList,
+		&cmd.Email,
+		&cmd.Password,
+	)
 
 	err := authMethod.changePasswordRequest(authSer.database)
 	if err != nil {
 		log.Println(err)
-		if _, ok := err.(customErr.UserNotFoundError); ok {
+		switch err.(type) {
+		case customErr.UserNotFoundError:
 			return nil
+		case customErr.FoundInBlocklistError:
+			return err
+		default:
+			return customErr.SomethingWentWrongError{}
 		}
-		return customErr.SomethingWentWrongError{}
 	}
 
 	return nil
