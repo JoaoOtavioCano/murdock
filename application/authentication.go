@@ -94,7 +94,9 @@ func (method *EmailPasswordMethod) login(db outbound.Database, lt *LoginThrottle
 		return nil, customErr.WrongPasswordError{}
 	}
 
-	jwt, err := issueJWT(user, method.jwtSecret)
+	s := models.NewSession(user)
+
+	jwt, err := issueJWT(s, method.jwtSecret)
 	if err != nil {
 		return nil, customErr.NotAbleToIssueJWTError{}
 	}
@@ -109,6 +111,21 @@ func (method *EmailPasswordMethod) authenticate(token []byte) (bool, error) {
 
 	header := jwtSections[0]
 	payload := jwtSections[1]
+	payloadDecoded, err := base64UrlpDecode(payload)
+	if err != nil {
+		return false, err
+	}
+
+	var s models.Session
+	err = json.Unmarshal(payloadDecoded, &s)
+	if err != nil {
+		return false, err
+	}
+
+	if s.IsExpired() {
+		return false, nil
+	}
+
 	signature, err := base64UrlpDecode(jwtSections[2])
 	if err != nil {
 		return false, err

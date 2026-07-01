@@ -159,14 +159,14 @@ func (authSer *AuthService) Delete(cmd commands.DeleteCmd) error {
 		return customErr.SomethingWentWrongError{}
 	}
 
-	usr := models.NewUser()
-	err = json.Unmarshal(payload, usr)
+	var s models.Session
+	err = json.Unmarshal(payload, &s)
 	if err != nil {
 		log.Println("[Error json.Unmarshal] " + err.Error())
 		return customErr.SomethingWentWrongError{}
 	}
 
-	err = authSer.database.DeleteUserInDB(usr.Id, tx)
+	err = authSer.database.DeleteUserInDB(s.Usr.Id, tx)
 	if err != nil {
 		log.Println("[Error database.DeleteUserInDB] " + err.Error())
 		return customErr.SomethingWentWrongError{}
