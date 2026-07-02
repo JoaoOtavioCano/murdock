@@ -8,7 +8,7 @@
 [x] increase time that the sign in takes every try needed
 [] CRUD users (missing DELETE, UPDATE, READ)
 [] better error handling (better messages)
-[] docker setup
+[x] docker setup
 [x] email confirmation
 [x] recover password
 [] how to generate pepper

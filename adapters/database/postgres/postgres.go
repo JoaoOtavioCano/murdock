@@ -51,10 +51,13 @@ type Database struct {
 func NewDatabase() (*Database, error) {
 	db := &Database{}
 	var err error
-	dbConnStr := fmt.Sprintf("user=%s dbname=%s sslmode=%s",
+	dbConnStr := fmt.Sprintf("user=%s dbname=%s sslmode=%s host=%s port=5432 password=%s",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSL_MODE"))
+		os.Getenv("DB_SSL_MODE"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PASSWORD"),
+	)
 	db.con, err = sql.Open("postgres", dbConnStr)
 	if err != nil {
 		return nil, err
