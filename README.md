@@ -1,3 +1,4 @@
+![Project Logo|205](./murdockLogo.svg)
 # Murdock
 
 ![Go Version](https://img.shields.io/badge/Go-1.24%2B-00ADD8?style=flat&logo=go)
