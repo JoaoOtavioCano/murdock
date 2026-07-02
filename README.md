@@ -9,7 +9,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 - [Overview & Architecture](#overview--architecture)
 - [Key Features](#key-features)
 - [Project Structure](#project-structure)
@@ -24,7 +24,7 @@
 
 ---
 
-## 🏛 Architecture Overview
+## Architecture Overview
 
 Murdock enforces strict separation of concerns through **Ports and Adapters (Hexagonal Architecture)**:
 
@@ -35,19 +35,19 @@ Murdock enforces strict separation of concerns through **Ports and Adapters (Hex
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🔐 Zero-Bloat & Standard Library First
+### Zero-Bloat & Standard Library First
 - **Native Routing**: Leveraging Go 1.22+ enhanced `http.ServeMux` for declarative HTTP routing (`POST /v1/sessions`, `DELETE /v1/users`) without heavy third-party web frameworks.
 - **Custom Cryptography Suite**: Built-in implementation of JSON Web Token (JWT) issuance, HMAC-SHA256 signing, and base64url decoding tailored to exact security specs.
 
-### 🛡 Enterprise-Grade Defense Mechanisms
+### Enterprise-Grade Defense Mechanisms
 - **PBKDF2-HMAC-SHA256 Hashing**: Passwords are protected using per-user unique random salts and an application-wide secret **pepper**, hardened with high-iteration PBKDF2 derivation.
 - **Proactive Password Blocklist**: Automatically queries the **Have I Been Pwned (k-Anonymity API)** during signup and password changes to block compromised or weak credentials.
 - **Brute-Force & Login Throttling**: Tracks consecutive authentication failures in PostgreSQL (`LoginThrottler`) and temporarily locks user accounts exceeding maximum threshold attempts.
 - **Secure Cookie Storage**: Authenticated sessions deliver JWTs inside hardened HTTP cookies (`HttpOnly: true`, `Secure: true`, `SameSite: Lax`).
 
-### 📩 Complete Identity Lifecycle
+### Complete Identity Lifecycle
 - Account creation with email confirmation code validation.
 - Secure, tokenized password recovery and change requests.
 - Account status transitions (`pending`, `active`, `locked`).
@@ -55,7 +55,7 @@ Murdock enforces strict separation of concerns through **Ports and Adapters (Hex
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 murdock/
@@ -81,7 +81,7 @@ murdock/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -134,7 +134,7 @@ make run
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 All HTTP requests and responses communicate via `Content-Type: application/json`.
 
@@ -222,7 +222,7 @@ Verifies active JWT token integrity. Returns `204 No Content` if valid.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Murdock comes equipped with a comprehensive suite of unit and adapter integration tests covering core cryptography, confirmation codes, blocklist validation, and service orchestration.
 
