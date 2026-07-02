@@ -41,12 +41,12 @@ func NewHTTPServer(host, port string, authService inbound.AuthPort) *HTTPServer 
 }
 
 func (s *HTTPServer) Start() {
-	http.DefaultServeMux.HandleFunc("POST /api/signin", s.signinHandler)                            // POST   /v1/sessions
-	http.DefaultServeMux.HandleFunc("POST /api/auth", s.checkHandler)                               // POST   /v1/sessions/status
-	http.DefaultServeMux.HandleFunc("POST /api/signup", s.signupHandler)                            // POST   /v1/users
-	http.DefaultServeMux.HandleFunc("POST /api/validate-code", s.confirmationCodeValidationHandler) // POST   /v1/code/validate
-	http.DefaultServeMux.HandleFunc("POST /api/change-password", s.changePasswordHandler)           // PUT    /v1/users/password
-	http.DefaultServeMux.HandleFunc("DELETE /api/delete-account", s.deleteAccountHandler)           // DELETE /v1/users
+	http.DefaultServeMux.HandleFunc("POST /v1/sessions", s.signinHandler)
+	http.DefaultServeMux.HandleFunc("POST /v1/sessions/status", s.checkHandler)
+	http.DefaultServeMux.HandleFunc("POST /v1/users", s.signupHandler)
+	http.DefaultServeMux.HandleFunc("POST /v1/verifications", s.confirmationCodeValidationHandler)
+	http.DefaultServeMux.HandleFunc("POST /v1/password-resets", s.changePasswordHandler)
+	http.DefaultServeMux.HandleFunc("DELETE /v1/users", s.deleteAccountHandler)
 
 	log.Printf("startign http server in %s\n", s.server.Addr)
 	log.Fatal(s.server.ListenAndServe())

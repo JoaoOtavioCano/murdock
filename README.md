@@ -38,7 +38,7 @@ Murdock enforces strict separation of concerns through **Ports and Adapters (Hex
 ## ✨ Key Features
 
 ### 🔐 Zero-Bloat & Standard Library First
-- **Native Routing**: Leveraging Go 1.22+ enhanced `http.ServeMux` for declarative HTTP routing (`POST /api/signin`, `DELETE /api/delete-account`) without heavy third-party web frameworks.
+- **Native Routing**: Leveraging Go 1.22+ enhanced `http.ServeMux` for declarative HTTP routing (`POST /v1/sessions`, `DELETE /v1/users`) without heavy third-party web frameworks.
 - **Custom Cryptography Suite**: Built-in implementation of JSON Web Token (JWT) issuance, HMAC-SHA256 signing, and base64url decoding tailored to exact security specs.
 
 ### 🛡 Enterprise-Grade Defense Mechanisms
@@ -51,17 +51,11 @@ Murdock enforces strict separation of concerns through **Ports and Adapters (Hex
 - Account creation with email confirmation code validation.
 - Secure, tokenized password recovery and change requests.
 - Account status transitions (`pending`, `active`, `locked`).
-- Transactional account deletion (`DELETE /api/delete-account`) with automated rollback protections.
+- Transactional account deletion (`DELETE /v1/users`) with automated rollback protections.
 
 ---
 
 ## 📂 Project Structure
-
-
-```
-
-```text
-README.md file successfully generated.
 
 ```text
 murdock/
@@ -83,7 +77,6 @@ murdock/
 ├── compose.yml             # Docker Compose configuration for local dev
 ├── Dockerfile              # Multi-stage production container build
 └── main.go                 # Application bootstrap and dependency injection
-
 ```
 
 ---
@@ -115,7 +108,6 @@ DB_PASSWORD=secretpassword
 DB_NAME=murdock_db
 DB_HOST=localhost
 DB_SSL_MODE=disable
-
 ```
 
 ### Running the Application
@@ -126,7 +118,6 @@ This command initializes the Murdock backend service alongside a persistent Post
 
 ```bash
 make compose_up
-
 ```
 
 #### Option 2: Running Locally via Go CLI
@@ -139,7 +130,6 @@ go mod tidy
 
 # Run the backend server
 make run
-
 ```
 
 ---
@@ -152,18 +142,18 @@ All HTTP requests and responses communicate via `Content-Type: application/json`
 
 | Method | Endpoint | Description | Auth Required |
 | --- | --- | --- | --- |
-| `POST` | `/api/signup` | Register a new user account (returns `201 Created`). | No |
-| `POST` | `/api/validate-code` | Verify email OTP code to activate account. | No |
-| `POST` | `/api/signin` | Authenticate credentials & receive `murdock_token` cookie. | No |
-| `POST` | `/api/auth` | Verify token signature & check session expiration. | Yes |
-| `POST` | `/api/change-password` | Request password reset OTP code sent to email. | No |
-| `DELETE` | `/api/delete-account` | Permanently purge authenticated user account. | Yes |
+| `POST` | `/v1/users` | Register a new user account (returns `201 Created`). | No |
+| `POST` | `/v1/verifications` | Verify email OTP code to activate account. | No |
+| `POST` | `/v1/sessions` | Authenticate credentials & receive `murdock_token` cookie. | No |
+| `POST` | `/v1/sessions/status` | Verify token signature & check session expiration. | Yes |
+| `POST` | `/v1/password-resets` | Request password reset OTP code sent to email. | No |
+| `DELETE` | `/v1/users` | Permanently purge authenticated user account. | Yes |
 
 ---
 
 ### Request & Response Payload Examples
 
-#### 1. User Registration (`POST /api/signup`)
+#### 1. User Registration (`POST /v1/users`)
 
 Creates a user in `pending` status and triggers a verification email.
 
@@ -177,10 +167,9 @@ Creates a user in `pending` status and triggers a verification email.
     "password": "CorrectHorseBatteryStaple2026!"
   }
 }
-
 ```
 
-#### 2. Confirm Email Code (`POST /api/validate-code`)
+#### 2. Confirm Email Code (`POST /v1/verifications`)
 
 Activates a `pending` account using the 6-digit verification code.
 
@@ -191,10 +180,9 @@ Activates a `pending` account using the 6-digit verification code.
   "digitalAddr": "developer@example.com",
   "code": "849201"
 }
-
 ```
 
-#### 3. Sign In (`POST /api/signin`)
+#### 3. Sign In (`POST /v1/sessions`)
 
 Validates credentials against PBKDF2 hash. If successful, sets an HTTP-Only cookie and injects the JWT into the response header.
 
@@ -208,7 +196,6 @@ Validates credentials against PBKDF2 hash. If successful, sets an HTTP-Only cook
     "password": "CorrectHorseBatteryStaple2026!"
   }
 }
-
 ```
 
 **Response Headers:**
@@ -217,10 +204,9 @@ Validates credentials against PBKDF2 hash. If successful, sets an HTTP-Only cook
 HTTP/1.1 200 OK
 Set-Cookie: murdock_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax
 Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
 ```
 
-#### 4. Validate Session (`POST /api/auth`)
+#### 4. Validate Session (`POST /v1/sessions/status`)
 
 Verifies active JWT token integrity. Returns `204 No Content` if valid.
 
@@ -232,7 +218,6 @@ Verifies active JWT token integrity. Returns `204 No Content` if valid.
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
-
 ```
 
 ---
@@ -246,4 +231,3 @@ To run all tests across packages:
 ```bash
 make test
 ```
-
